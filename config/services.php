@@ -28,6 +28,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // API SIRUS (baca saja, JWT) — SIKEU mengambil akun & jurnal untuk snapshot cutoff (App\Support\SirusApi).
+    // url = host SIRUS; akun = user SIRUS ber-role Api Sikeu (dibuat `php artisan sikeu-api:akun` di SIRUS).
+    'sirus' => [
+        'url' => env('SIKEU_API_URL'),
+        'user' => env('SIKEU_API_USER'),
+        'password' => env('SIKEU_API_PASSWORD'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

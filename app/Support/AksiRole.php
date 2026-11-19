@@ -37,6 +37,9 @@ class AksiRole
     /** Role yang boleh MEMBACA laporan keuangan (buku besar, neraca, laba rugi, arus kas). */
     public const LAPORAN_LIHAT = ['Admin', 'Manager Keuangan', 'Staf Akuntansi', 'Direksi'];
 
+    /** Role yang boleh mengambil snapshot jurnal dari SIRUS (cutoff versi baru). Membandingkan versi = LAPORAN_LIHAT. */
+    public const SNAPSHOT_AMBIL = ['Admin', 'Manager Keuangan', 'Staf Akuntansi'];
+
     /** Role yang boleh membuat / mengubah jurnal umum (memorial, penyesuaian) selama periodenya belum dikunci. */
     public const JURNAL_ENTRI = ['Admin', 'Manager Keuangan', 'Staf Akuntansi'];
 

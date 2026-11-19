@@ -6,19 +6,24 @@ Oracle 10g (yajra/laravel-oci8), Tailwind + Alpine, Spatie Permission.
 
 ## Aturan keras
 
-1. **SIRUS = baca saja.** Data SIRUS hanya lewat `DB::connection('sirus')`. Jangan pernah menulis ke
-   SIRUS dari SIKEU — tidak lewat koneksi itu, tidak lewat API. Hak Oracle user `sikeu` di skema SIRUS
-   memang hanya SELECT (`database/sql/01_grant_baca_sirus.sql`); jangan minta / tambah GRANT tulis.
-   Bila suatu fitur butuh menulis ke SIRUS (mis. jurnal yang harus ikut terbaca form Oracle 6i),
-   **berhenti dan tanya user** — itu keputusan arsitektur.
+1. **SIRUS = baca saja, LEWAT API.** Data SIRUS hanya lewat `App\Support\SirusApi` (`/api/sikeu` di SIRUS,
+   JWT, akun ber-role Api Sikeu). SIKEU TIDAK punya koneksi database ke skema SIRUS — jangan menambahkannya.
+   Data baru yang dibutuhkan = endpoint baru di SIRUS (`routes/api-sikeu.php`, `Api\Sikeu\JurnalApiController`),
+   dikerjakan di branch `develop` SIRUS. Bila suatu fitur butuh MENULIS ke SIRUS, **berhenti dan tanya user**.
 2. **Transaksi pelayanan tetap di SIRUS**: kasir RJ/UGD/RI/apotek, piutang, penerimaan PBF, hutang/DP
    supplier. SIKEU tidak membuat ulang layar-layar itu.
 3. **Tabel milik SIKEU** berawalan `sikeumst_` (master) / `sikeutxn_` (transaksi), lewat koneksi default.
-   Nama objek Oracle maks 30 karakter (`ORA_MAX_NAME_LEN=30`).
-4. **Laporan keuangan** mengikuti keputusan SIRUS: SELECT langsung ke tabel transaksi (mesin
-   `App\Support\Keuangan\Jurnal` + katalog `JurnalCabang` di sirus-php82, lihat `docs/jurnal-keuangan.md`
-   di repo SIRUS), BUKAN view `TKVIEW_ACCOUNTS*` (lambat & ada bug wrong-result Oracle 10g).
-5. Halaman baru: daftarkan route di `routes/web.php` **dan** entri di `App\Services\AppMenu::definitions()`
+   Nama objek Oracle maks 30 karakter (`ORA_MAX_NAME_LEN=30`). **Sumber struktur tabel pembukuan =
+   `database/sql/01_struktur_pembukuan.sql`** (bukan migrasi Laravel; migrasi hanya untuk tabel kerangka:
+   users, roles, cache, jobs, identitas). Tabel/kolom baru = file DDL bernomor berikutnya (02_…), lengkap
+   dengan bagian periksa / verifikasi / rollback. Konsep buku besar ada di kepala file 01.
+4. **Mesin jurnal tetap satu, di SIRUS** (`App\Support\Keuangan\Jurnal` + `JurnalCabang`, lihat
+   `docs/jurnal-keuangan.md` di repo SIRUS). Jangan menyalin katalog cabangnya ke SIKEU. API mengirim per cabang
+   (satu SELECT tanpa UNION — UNION besar memberi wrong result di Oracle 10.2.0.1).
+5. **Snapshot = tak pernah diubah.** Versi berstatus Selesai di `sikeutxn_snap_*` tidak di-update/di-hapus;
+   ambil ulang = versi baru. Pembanding (`App\Support\SnapshotJurnal::bandingkan`) bergantung pada itu (hasilnya di-cache).
+   `kunci_baris` = sha1(cabang|label|akun|lawan|tanggal|shift) — nominal sengaja tidak masuk kunci.
+6. Halaman baru: daftarkan route di `routes/web.php` **dan** entri di `App\Services\AppMenu::definitions()`
    (daftar role di sana = pembatas akses halaman, middleware `menu`). Aksi berisiko: konstanta di
    `App\Support\AksiRole` + Gate di `AppServiceProvider`, dan guard server `->can()` di method-nya.
 
@@ -26,7 +31,8 @@ Oracle 10g (yajra/laravel-oci8), Tailwind + Alpine, Spatie Permission.
 
 - `.env`: `DB_HOST=localhost` = Oracle lokal dev (boleh tulis ke skema SIKEU). Bila `DB_HOST` mengarah
   ke server produksi, perlakukan hanya-baca.
-- Cek koneksi SIRUS: menu Sistem › Sambungan SIRUS (Admin).
+- Cek API SIRUS: menu Sistem › Sambungan SIRUS (Admin).
+- `SnapshotJurnal` kelas INSTANCE: yajra `insertGetId` gagal dari method statis.
 - Kelas Tailwind baru wajib `npm run build`.
 - Tanya user sebelum commit.
 

@@ -37,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
         // Contoh:
         // Gate::define('dokumen.hapus', fn ($user) => $user->hasAnyRole(AksiRole::DOKUMEN_HAPUS));
         Gate::define('laporan.lihat', fn ($user) => $user->hasAnyRole(AksiRole::LAPORAN_LIHAT));
+        Gate::define('snapshot.ambil', fn ($user) => $user->hasAnyRole(AksiRole::SNAPSHOT_AMBIL));
         Gate::define('jurnal.entri', fn ($user) => $user->hasAnyRole(AksiRole::JURNAL_ENTRI));
         Gate::define('periode.kunci', fn ($user) => $user->hasAnyRole(AksiRole::PERIODE_KUNCI));
         Gate::define('tutupBuku.jalankan', fn ($user) => $user->hasAnyRole(AksiRole::TUTUP_BUKU));

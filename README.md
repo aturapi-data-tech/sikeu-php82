@@ -25,15 +25,27 @@ dan **Alpine.js** — fondasi yang sama dengan SIAP & SIRUS.
 
 ## Arsitektur data
 
-| Koneksi | Skema | Hak | Isi |
-|---|---|---|---|
-| `oracle` (default) | `SIKEU` | penuh | tabel milik SIKEU: `SIKEUMST_*` (master), `SIKEUTXN_*` (transaksi), users/roles |
-| `sirus` | `SIRUS` | **SELECT saja** | akun, kas, jurnal & seluruh tabel transaksi SIRUS |
+SIKEU **tidak membaca database SIRUS langsung**. Data diambil lewat **API baca-saja** SIRUS
+(`/api/sikeu`, token JWT, akun SIRUS ber-role *Api Sikeu*) lalu disimpan di skema Oracle SIKEU sendiri.
+Mesin jurnal tetap satu, di SIRUS (`App\Support\Keuangan\Jurnal` + `JurnalCabang`), jadi angka SIKEU
+= angka Buku Besar / Laba Rugi SIRUS.
 
-Koneksi `sirus` login memakai user `sikeu` lalu mengalihkan `CURRENT_SCHEMA` ke `SIRUS`, jadi nama
-tabel ditulis tanpa awalan (`DB::connection('sirus')->table('acmst_accounts')`). Karena hak user
-`sikeu` di skema SIRUS hanya `SELECT`, tulis ke SIRUS **ditolak Oracle** (ORA-01031). Menu
-**Sistem › Sambungan SIRUS** memeriksa keempat syarat ini.
+| Endpoint SIRUS | Isi |
+|---|---|
+| `POST /api/sikeu/token` | login akun API → JWT |
+| `GET /api/sikeu/cabang` | katalog cabang jurnal (±200) + kunci tetap per cabang |
+| `GET /api/sikeu/jurnal/{tahun}/{bulan}?cabang=N` | semua baris jurnal satu cabang satu bulan |
+| `GET /api/sikeu/akun` | bagan akun |
+
+### Cutoff & pembanding versi
+
+- **Snapshot Jurnal** — tiap "Ambil dari SIRUS" menyimpan jurnal satu bulan sebagai **versi baru**
+  (`sikeutxn_snap_hdrs` / `_cabangs` / `_dtls`); versi lama tidak pernah ditimpa. Checksum per cabang & per versi.
+- **Bandingkan Versi** — dua versi dibandingkan sampai tingkat transaksi: **baru**, **hilang**, **berubah**
+  (nominal / tanggal / akun / shift). Hanya cabang yang checksum-nya beda yang dibandingkan per baris.
+- Dari baris perintah / cron: `php artisan sikeu:ambil-jurnal 202610`.
+
+Tabel milik SIKEU berawalan `SIKEUMST_` (master) dan `SIKEUTXN_` (transaksi).
 
 ---
 
@@ -46,8 +58,8 @@ Menu tampil sesuai role (definisi tunggal di `app/Services/AppMenu.php`); aksi d
 |---|---|
 | **Admin** | Semua menu, termasuk Sistem |
 | **Manager Keuangan** | Semua menu keuangan + pengesahan (kunci periode, tutup buku) |
-| **Staf Akuntansi** | Jurnal umum & laporan, tanpa pengesahan |
-| **Direksi** | Baca laporan |
+| **Staf Akuntansi** | Snapshot jurnal, jurnal umum & laporan, tanpa pengesahan |
+| **Direksi** | Baca laporan & Bandingkan Versi |
 
 ---
 
@@ -60,16 +72,21 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Database (sekali, oleh DBA):
+Database (sekali):
 
 1. `database/sql/00_create_user_sikeu.sql` — sebagai SYSTEM: buat user `sikeu` (ganti sandinya dulu).
-2. `database/sql/01_grant_baca_sirus.sql` — sebagai pemilik skema SIRUS atau DBA: beri hak **SELECT** ke `sikeu`.
-   Ulangi bila SIRUS menambah tabel baru.
+2. `php artisan migrate` — tabel kerangka Laravel (users, roles, cache, jobs, identitas).
+3. `database/sql/01_struktur_pembukuan.sql` — sebagai user `sikeu`: 25 tabel pembukuan (akun, periode, jurnal,
+   saldo, template laporan, aset & penyusutan, HPP, hutang-piutang, snapshot SIRUS, audit).
 
-Isi `.env` (`DB_HOST`, `DB_SERVICE_NAME`, `DB_USERNAME=sikeu`, `DB_PASSWORD`, `SIRUS_DB_SCHEMA`, `IDENTITAS_*`), lalu:
+Di **SIRUS**: isi `SIKEU_API_JWT_SECRET` (≥ 32 karakter acak) di `.env`, lalu `php artisan sikeu-api:akun`
+→ salin username & password yang dicetak ke `.env` SIKEU.
+
+Isi `.env` SIKEU (`DB_*` dengan `DB_USERNAME=sikeu`, `SIKEU_API_URL`, `SIKEU_API_USER`, `SIKEU_API_PASSWORD`,
+`IDENTITAS_*`), lalu:
 
 ```bash
-php artisan migrate
+php artisan migrate          # lalu jalankan 01_struktur_pembukuan.sql sebagai user sikeu
 php artisan storage:link
 npm run build
 php artisan serve --port=8003

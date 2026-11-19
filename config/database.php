@@ -31,42 +31,6 @@ return [
 
     'connections' => [
 
-        /*
-         * SIRUS — BACA SAJA. Login memakai user SIKEU sendiri (DB_USERNAME), lalu
-         * CURRENT_SCHEMA dialihkan ke skema SIRUS supaya nama tabel tanpa awalan
-         * (acmst_accounts, tktxn_…) langsung menunjuk tabel SIRUS. Hak user SIKEU di
-         * skema SIRUS hanya GRANT SELECT (database/sql/01_grant_baca_sirus.sql), jadi
-         * INSERT/UPDATE/DELETE ditolak oleh Oracle sendiri — bukan sekadar disiplin kode.
-         * Pemakaian: DB::connection('sirus')->table('acmst_accounts')…
-         * Tabel milik SIKEU (sikeumst_/sikeutxn_) tetap lewat koneksi default 'oracle'.
-         */
-        'sirus' => [
-            'driver' => 'oracle',
-            'tns' => env('DB_TNS', ''),
-            'host' => env('SIRUS_DB_HOST', env('DB_HOST', '')),
-            'port' => env('SIRUS_DB_PORT', env('DB_PORT', '1521')),
-            'database' => env('SIRUS_DB_DATABASE', env('DB_DATABASE', '')),
-            'service_name' => env('SIRUS_DB_SERVICE_NAME', env('DB_SERVICE_NAME', '')),
-            'username' => env('DB_USERNAME', ''),
-            'password' => env('DB_PASSWORD', ''),
-            'schema' => env('SIRUS_DB_SCHEMA', 'SIRUS'),
-            'charset' => env('DB_CHARSET', 'AL32UTF8'),
-            'prefix' => '',
-            'prefix_schema' => '',
-            'edition' => env('DB_EDITION', 'ora$base'),
-            'server_version' => env('DB_SERVER_VERSION', '11g'),
-            'load_balance' => env('DB_LOAD_BALANCE', 'yes'),
-            'max_name_len' => env('ORA_MAX_NAME_LEN', 30),
-            'dynamic' => [],
-            'sessionVars' => [
-                'NLS_TIME_FORMAT' => 'HH24:MI:SS',
-                'NLS_DATE_FORMAT' => 'YYYY-MM-DD HH24:MI:SS',
-                'NLS_TIMESTAMP_FORMAT' => 'YYYY-MM-DD HH24:MI:SS',
-                'NLS_TIMESTAMP_TZ_FORMAT' => 'YYYY-MM-DD HH24:MI:SS TZH:TZM',
-                'NLS_NUMERIC_CHARACTERS' => '.,',
-            ],
-        ],
-
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),

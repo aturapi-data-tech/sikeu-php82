@@ -88,14 +88,17 @@ class AppMenu
     private static function definitions(callable $entry): array
     {
         return [
-            // Modul keuangan didaftarkan di sini (group Buku Besar / Laporan / Tutup Buku).
-            // Role ditulis huruf kecil, contoh: ['admin', 'manager keuangan', 'staf akuntansi', 'direksi'].
+            // Role ditulis huruf kecil: 'admin', 'manager keuangan', 'staf akuntansi', 'direksi'.
+
+            // ── Cutoff Jurnal ──────────────────────────────────────────
+            $entry(['group' => 'Cutoff Jurnal', 'groupOrder' => 1, 'order' => 1, 'route' => 'cutoff.snapshot-jurnal', 'title' => 'Snapshot Jurnal', 'desc' => 'Ambil jurnal SIRUS satu bulan sebagai versi baru (cutoff) — versi lama tidak ditimpa', 'roles' => ['admin', 'manager keuangan', 'staf akuntansi'], 'badge' => 'SNP']),
+            $entry(['group' => 'Cutoff Jurnal', 'groupOrder' => 1, 'order' => 2, 'route' => 'cutoff.banding-versi', 'title' => 'Bandingkan Versi', 'desc' => 'Cari transaksi yang baru, hilang, atau berubah antara dua versi snapshot', 'roles' => ['admin', 'manager keuangan', 'staf akuntansi', 'direksi'], 'badge' => 'DIF']),
 
             // ── Sistem ─────────────────────────────────────────────────
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 0, 'route' => 'sistem.identitas', 'title' => 'Identitas Instansi', 'desc' => 'Logo, nama & profil instansi (kop cetakan, halaman depan)', 'roles' => ['admin'], 'badge' => 'ID']),
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 1, 'route' => 'sistem.user-control', 'title' => 'User Control', 'desc' => 'Kelola user login, role & tanda tangan', 'roles' => ['admin'], 'badge' => 'USR']),
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 2, 'route' => 'sistem.role-control', 'title' => 'Role Control', 'desc' => 'Kelola role & permission', 'roles' => ['admin'], 'badge' => 'ROL']),
-            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 3, 'route' => 'sistem.sambungan-sirus', 'title' => 'Sambungan SIRUS', 'desc' => 'Cek koneksi baca-saja ke skema SIRUS (akun, jurnal) & pastikan tidak bisa menulis', 'roles' => ['admin'], 'badge' => 'DB']),
+            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 3, 'route' => 'sistem.sambungan-sirus', 'title' => 'Sambungan SIRUS', 'desc' => 'Uji login API SIRUS (JWT), katalog cabang jurnal & bagan akun', 'roles' => ['admin'], 'badge' => 'DB']),
         ];
     }
 }

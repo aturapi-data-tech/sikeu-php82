@@ -1,14 +1,11 @@
 <?php
 
 use Livewire\Component;
-use Illuminate\Support\Facades\DB;
+use App\Support\SirusApi;
 
 /**
- * SAMBUNGAN SIRUS — cek koneksi 'sirus' (config/database.php): login user SIKEU,
- * CURRENT_SCHEMA dialihkan ke skema SIRUS, hak hanya SELECT.
- * Empat pemeriksaan: tersambung, jumlah objek ber-hak baca, contoh baca, dan TULIS DITOLAK.
- * Uji tulis = DELETE … WHERE 1 = 0 di dalam transaksi yang di-rollback: tak ada baris tersentuh
- * walau hak tulis ternyata ada, dan Oracle memeriksa hak saat parse sehingga ORA-01031 tetap muncul.
+ * SAMBUNGAN SIRUS — uji API SIRUS (/api/sikeu, JWT, baca saja): pengaturan .env, login token,
+ * katalog cabang jurnal, bagan akun. Logika di App\Support\SirusApi::ujiSambungan().
  */
 new class extends Component {
     /** @var array<int, array{judul: string, lulus: bool, keterangan: string}> */
@@ -18,89 +15,23 @@ new class extends Component {
 
     public function periksa(): void
     {
-        $this->hasilPeriksa = [];
-        $skemaSirus = strtoupper((string) config('database.connections.sirus.schema'));
-
-        try {
-            // yajra langsung membuka sambungan saat koneksi dibuat → harus di dalam try.
-            $koneksi = DB::connection('sirus');
-            $sesi = $koneksi->selectOne("SELECT USER AS pengguna, SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') AS skema FROM dual");
-        } catch (\Throwable $e) {
-            $this->tambahHasil('Tersambung ke Oracle', false, $e->getMessage());
-            $this->waktuPeriksa = now()->format('d/m/Y H:i:s');
-            return;
-        }
-
-        $penggunaSama = strtoupper((string) $sesi->pengguna) === $skemaSirus;
-        $this->tambahHasil(
-            'Tersambung ke Oracle',
-            !$penggunaSama,
-            $penggunaSama
-                ? "Login sebagai {$sesi->pengguna} = PEMILIK skema SIRUS. Ganti DB_USERNAME ke user sikeu supaya hak tulis tidak ikut."
-                : "Login {$sesi->pengguna}, skema aktif {$sesi->skema}.",
-        );
-
-        try {
-            $jumlahObjek = (int) $koneksi->selectOne(
-                'SELECT COUNT(*) AS c FROM all_tab_privs WHERE grantee = USER AND table_schema = ? AND privilege = ?',
-                [$skemaSirus, 'SELECT'],
-            )->c;
-            $this->tambahHasil(
-                'Hak baca ke skema SIRUS',
-                $jumlahObjek > 0,
-                $jumlahObjek > 0
-                    ? number_format($jumlahObjek, 0, ',', '.') . ' tabel/view bisa dibaca.'
-                    : 'Belum ada hak baca — jalankan database/sql/01_grant_baca_sirus.sql.',
-            );
-        } catch (\Throwable $e) {
-            $this->tambahHasil('Hak baca ke skema SIRUS', false, $e->getMessage());
-        }
-
-        try {
-            $jumlahAkun = (int) $koneksi->table('acmst_accounts')->count();
-            $this->tambahHasil('Contoh baca: acmst_accounts', true, number_format($jumlahAkun, 0, ',', '.') . ' akun terbaca.');
-        } catch (\Throwable $e) {
-            $this->tambahHasil('Contoh baca: acmst_accounts', false, $e->getMessage());
-        }
-
-        try {
-            $koneksi->beginTransaction();
-            $koneksi->statement('DELETE FROM acmst_accounts WHERE 1 = 0');
-            $koneksi->rollBack();
-            $this->tambahHasil('Tulis ke SIRUS ditolak', false, 'BAHAYA: perintah tulis DITERIMA. Cabut hak INSERT/UPDATE/DELETE user ini di skema SIRUS.');
-        } catch (\Throwable $e) {
-            if ($koneksi->transactionLevel() > 0) {
-                $koneksi->rollBack();
-            }
-            $ditolakHak = str_contains($e->getMessage(), 'ORA-01031');
-            $this->tambahHasil(
-                'Tulis ke SIRUS ditolak',
-                $ditolakHak,
-                $ditolakHak ? 'Oracle menolak (ORA-01031 insufficient privileges) — sesuai harapan.' : $e->getMessage(),
-            );
-        }
-
+        $this->hasilPeriksa = SirusApi::ujiSambungan();
         $this->waktuPeriksa = now()->format('d/m/Y H:i:s');
-    }
-
-    private function tambahHasil(string $judul, bool $lulus, string $keterangan): void
-    {
-        $this->hasilPeriksa[] = ['judul' => $judul, 'lulus' => $lulus, 'keterangan' => $keterangan];
     }
 };
 ?>
 
 <div>
     <x-page-title title="Sambungan SIRUS"
-        subtitle="Cek koneksi baca-saja SIKEU ke skema SIRUS — tersambung, hak baca, dan tulis wajib ditolak" />
+        subtitle="Uji API SIRUS — login token, katalog cabang jurnal, bagan akun" />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-surface-soft dark:bg-gray-900">
         <div class="max-w-3xl px-6 pt-4 pb-6 mx-auto space-y-4">
 
             <div class="p-4 text-sm border rounded-xl border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800/40 dark:bg-blue-900/20 dark:text-blue-100">
-                SIKEU membaca data keuangan langsung dari tabel SIRUS lewat koneksi <code>sirus</code>.
-                Login memakai user <b>sikeu</b> yang hanya punya hak <b>SELECT</b>, jadi tulis ke SIRUS ditolak Oracle.
-                Skema tujuan: <b>{{ config('database.connections.sirus.schema') }}</b>.
+                SIKEU membaca SIRUS lewat <b>API baca-saja</b> (<code>/api/sikeu</code>, token JWT).
+                Atur <code>SIKEU_API_URL</code>, <code>SIKEU_API_USER</code>, <code>SIKEU_API_PASSWORD</code> di <code>.env</code> SIKEU;
+                di SIRUS isi <code>SIKEU_API_JWT_SECRET</code> dan buat akunnya dengan <code>php artisan sikeu-api:akun</code>.
             </div>
 
             <div class="flex items-center gap-3">
