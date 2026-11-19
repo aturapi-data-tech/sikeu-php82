@@ -244,6 +244,15 @@ gilirannya) · abu = aksi rutin / alternatif (Tarik, Tarik ulang, Ganti Versi) �
   kartu utang di luar SIRUS). Aturan: **diabaikan di SIRUS = wajib dicatat di SIKEU**, terutama bila lawannya Kas/Persediaan.
   Berlaku untuk posting berikutnya (bulan terposting baru berubah setelah tarik ulang → sahkan versi baru).
 
+### Kasus khusus — akun SIRUS yang dimatikan / dipertahankan (analisis tarikan 01/2025–11/2026, 11-19)
+- Aturan: matikan HANYA bila SIKEU mencatat kejadian yang sama dengan cara lain; yang tidak dicatat SIRUS → Jurnal Umum.
+- Dimatikan: HPP 5.1K/5.1K1/5.1K2/5.1K3 (HPP taksiran + koreksi opname). 5.1K4 HPP Ruangan = pemakaian BMHP → tetap.
+- JANGAN dimatikan (lawan kas/piutang nyata): 1.1A07/1.1A08 peralatan (lawan Kas TU), 5.1F01/5.1F02* gaji & jasa medis
+  (lawan Kas TU), 4.1I1/5.1K6 untung/rugi BPJS (lawan Kas + piutang terutang), semua pendapatan/persediaan/utang.
+- Tidak ada di SIRUS: penyusutan (nol jurnal), akrual RI masih dirawat, akrual beban/jasa medis, bunga/admin bank, PPh.
+- Diputuskan nanti: BPJS (matikan 4.1I1/5.1K6 bila klaim dibukukan per bulan pelayanan dari E-Klaim); gaji (SIAP vs SIRUS, jangan dobel).
+- Tercatat juga di Panduan › Cara Pakai §4c — ubah keduanya bersamaan.
+
 ### Catatan lama: saldo awal SIRUS 2026 (alasan tidak dipakai)
 
 - `tktxn_saldoawalakuns` 2026 **tidak seimbang ±Rp 9,26 M** (K lebih). Penyebab: akun **L01 "Laba (Rugi)"** dipakai tutup

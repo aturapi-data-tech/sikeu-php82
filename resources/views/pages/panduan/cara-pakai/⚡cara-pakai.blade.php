@@ -44,6 +44,7 @@ new class extends Component {
         'kunci' => '3. Kunci & buka kunci',
         'setelah-kunci' => '4. SIRUS berubah setelah dikunci?',
         'set-ulang' => '4b. Memulai dari tahun lain',
+        'kasus' => '4c. Kasus khusus (bertahap)',
         'warna' => '5. Arti warna tombol',
         'hak' => '6. Siapa boleh apa',
         'tanya' => 'Tanya jawab',
@@ -176,6 +177,55 @@ new class extends Component {
                         <li><b>Maju</b> (mis. 2024 → 2026): posting &amp; saldo awal sebelum 2026 dibatalkan (hasil tarikan tetap, tahun itu jadi "hanya dicek"). <b>Ditolak</b> bila masih ada bulan terkunci sebelum 2026 — buka kuncinya dulu dari bulan terbaru.</li>
                         <li><b>Reset Tahun</b> (Pengaturan Pembukuan › Tahun buku, kuning, wajib alasan): mengulang pembukuan satu tahun — posting SIRUS dilepas (hasil tarikan tetap, tinggal Sahkan lagi), jurnal umum terposting kembali jadi draft, saldo awal tidak disentuh. Ditolak bila ada bulan terkunci di tahun itu atau sesudahnya. Tahun yang belum dipakai bisa <b>Hapus Tahun Buku</b> (kembali "Belum dibuka").</li>
                         <li><b>Kunci per tahun berurutan:</b> 01/2024 … 12/2024 harus terkunci dulu, baru 2025, baru 2026. Tahun yang belum dibuka tidak dilewati — "Kunci berikutnya" di Tarik Data SIRUS selalu menunjukkan gilirannya.</li>
+                    </ul>
+                </section>
+
+                {{-- KASUS KHUSUS --}}
+                <section id="kasus" class="p-6 border scroll-mt-24 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <h2>4c. Kasus khusus — yang belum / tidak dicatat SIRUS (diperbaiki bertahap)</h2>
+                    <p class="mt-2 text-sm">Aturan memutuskan: matikan akun SIRUS (sakelar <b>Masuk pembukuan</b> di {!! $tautan('master.peta-akun', 'Peta Akun SIRUS') !!}) <b>hanya bila SIKEU akan mencatat kejadian yang sama dengan cara lain</b>. Bila SIRUS memang tidak mencatatnya, jangan matikan apa pun — cukup tambahkan lewat {!! $tautan('buku-besar.jurnal-umum', 'Jurnal Umum') !!}.</p>
+
+                    <h3>1. Dimatikan — dikerjakan sendiri di SIKEU</h3>
+                    <div class="mt-2 overflow-x-auto border rounded-xl border-hairline dark:border-gray-700">
+                        <table class="ds-table ds-table-entri">
+                            <thead><tr><th>Akun SIRUS</th><th>Alasan &amp; cara di SIKEU</th></tr></thead>
+                            <tbody>
+                                <tr><td class="whitespace-nowrap">5.1K / 5.1K1 HPP RJ/UGD/Resep, 5.1K2 RI, 5.1K3 Klinik</td>
+                                    <td>HPP ditaksir sendiri: tiap akhir bulan Jurnal Umum D HPP Obat / K Persediaan Apotek (penjualan obat × (1 − margin)), dikoreksi saat opname sampai saldo persediaan = hasil opname. Saldo awal persediaan wajib dari opname 31 Desember.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3>2. Tetap dari SIRUS — JANGAN dimatikan (lawannya kas / piutang nyata)</h3>
+                    <div class="mt-2 overflow-x-auto border rounded-xl border-hairline dark:border-gray-700">
+                        <table class="ds-table ds-table-entri">
+                            <thead><tr><th>Akun SIRUS</th><th>Lawannya</th><th>Bila dimatikan…</th></tr></thead>
+                            <tbody>
+                                <tr><td>1.1A07 / 1.1A08 Peralatan non medis / medis</td><td>Kas TU</td><td>Pembelian alat <b>dan uang keluarnya</b> hilang dari buku</td></tr>
+                                <tr><td>5.1F01 Gaji Karyawan, 5.1F02* Gaji / Jasa Medis</td><td>Kas TU</td><td>Pembayaran gaji hilang, kas jadi terlalu besar</td></tr>
+                                <tr><td>4.1I1 Keuntungan / 5.1K6 Kerugian Layanan BPJS</td><td>Kas + Piutang RJ/UGD/RI</td><td>Pelunasan klaim BPJS hilang, piutang tidak pernah turun</td></tr>
+                                <tr><td>Pendapatan 4.1A–4.1G, persediaan, utang supplier, beban operasional</td><td>Kas / piutang / utang</td><td>Inti transaksi RS</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3>3. Tidak ada di SIRUS — tambahkan lewat Jurnal Umum</h3>
+                    <div class="mt-2 overflow-x-auto border rounded-xl border-hairline dark:border-gray-700">
+                        <table class="ds-table ds-table-entri">
+                            <thead><tr><th>Yang tidak ada di SIRUS</th><th>Cara di SIKEU</th></tr></thead>
+                            <tbody>
+                                <tr><td><b>Penyusutan aset</b> — tidak ada satu pun jurnal penyusutan di SIRUS</td><td>Jurnal bulanan D Beban Penyusutan / K Akumulasi Penyusutan (nanti modul Aset Tetap)</td></tr>
+                                <tr><td><b>Pendapatan pasien RI yang masih dirawat</b> — SIRUS baru mengakui saat pasien pulang</td><td>Jurnal akrual akhir bulan (D Piutang RI / K Pendapatan RI), dibalik di bulan berikutnya</td></tr>
+                                <tr><td><b>Jasa medis / tagihan yang belum dibayar</b> (listrik, air, jasa dokter bulan ini)</td><td>Jurnal akrual: D Beban / K Utang</td></tr>
+                                <tr><td><b>Bunga &amp; biaya admin bank, PPh badan, cicilan pinjaman</b></td><td>Jurnal Umum (akun 7.x / 8.x / 9.x)</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3>4. Perlu diputuskan nanti — jangan dimatikan sekarang</h3>
+                    <ul class="text-sm">
+                        <li><b>Keuntungan / Kerugian BPJS (4.1I1 &amp; 5.1K6):</b> SIRUS mencatat selisih tarif saat klaim dibayar, bukan saat pelayanan. Bila nanti SIKEU membukukan klaim BPJS per bulan pelayanan dari data E-Klaim, barulah dua akun ini dimatikan. Sebelum itu, biarkan.</li>
+                        <li><b>Gaji &amp; jasa medis:</b> bila nanti SIKEU membaca rekap penggajian dari SIAP, pastikan tidak dobel dengan pembayaran gaji di SIRUS — matikan salah satu, jangan keduanya.</li>
                     </ul>
                 </section>
 

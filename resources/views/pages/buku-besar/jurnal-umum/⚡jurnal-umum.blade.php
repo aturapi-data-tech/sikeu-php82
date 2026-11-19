@@ -42,6 +42,11 @@ new class extends Component {
             $this->periode = (string) (DB::table('sikeumst_periodes')->where('status', 'B')->min('periode')
                 ?? DB::table('sikeumst_periodes')->max('periode') ?? now()->format('Ym'));
         }
+        // ?baru=1 (mis. dari tombol Jurnal Umum di Neraca Saldo): langsung buka form jurnal baru di periode itu
+        if (request()->boolean('baru') && auth()->user()?->can('jurnal.entri')
+            && DB::table('sikeumst_periodes')->where('periode', $this->periode)->where('status', 'B')->exists()) {
+            $this->buatBaru();
+        }
     }
 
     #[Computed]

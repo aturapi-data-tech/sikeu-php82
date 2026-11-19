@@ -112,6 +112,13 @@ new class extends Component {
             && round($total['akhir_debit'] - $total['akhir_kredit'], 2) == 0.0
             && round($total['awal_debit'] - $total['awal_kredit'], 2) == 0.0;
     }
+
+    /** Periode masih Buka → tombol Jurnal Umum langsung membuka form jurnal baru. */
+    #[Computed]
+    public function periodeBuka(): bool
+    {
+        return DB::table('sikeumst_periodes')->where('periode', $this->periode)->where('status', BukuBesar::STATUS_BUKA)->exists();
+    }
 };
 ?>
 
@@ -164,6 +171,14 @@ new class extends Component {
                                 <x-ikon-peringatan /> {{ $this->jumlahBerlawanan }} saldo berlawanan{{ $hanyaBerlawanan ? ' (disaring)' : '' }}
                             </button>
                         @endif
+                        @can('jurnal.entri')
+                            {{-- Koreksi / penyesuaian langsung dari sini: periode Buka → form jurnal baru langsung terbuka --}}
+                            @php $periodeBuka = $this->periodeBuka; @endphp
+                            <x-secondary-button type="button" title="{{ $periodeBuka ? 'Buat jurnal koreksi / penyesuaian di periode ini' : 'Periode ini dikunci — buka daftar Jurnal Umum' }}"
+                                x-on:click="Livewire.navigate('{{ route('buku-besar.jurnal-umum', $periodeBuka ? ['periode' => $periode, 'baru' => 1] : ['periode' => $periode]) }}')">
+                                <x-ikon nama="{{ $periodeBuka ? 'tambah' : 'lihat' }}" /> Jurnal Umum
+                            </x-secondary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
