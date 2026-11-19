@@ -226,6 +226,9 @@ gilirannya) · abu = aksi rutin / alternatif (Tarik, Tarik ulang, Ganti Versi) �
 - **Bulan sebelum tahun pertama = hanya dicek** (keputusan user 11-19, opsi 1 untuk 2025): tarik & bandingkan boleh;
   sahkan/posting, jurnal umum, dan kunci DITOLAK (`BukuBesar::wajibMulaiTahunPertama`); urutan kunci dihitung mulai tahun
   pertama. Posting yang terlanjur dibatalkan lewat `BukuBesar::batalkanSebelumTahunMulai()` (snapshot tetap disimpan).
+- Layar **Pembukuan › Pengaturan Pembukuan** (menu urutan 1, `buku-besar.pengaturan`): tahun pertama + Set Ulang,
+  tahun buku (status & Buka Tahun Buku), akun saldo laba. Menu Pembukuan urut alur: Pengaturan → Saldo Awal → Tarik
+  Data SIRUS → Bandingkan Versi → Jurnal Umum → Neraca Saldo → Buku Besar.
 - **Set Ulang tahun pertama** (`SaldoAwal::dampakSetUlang/setUlangTahunMulai`, hak `tutupBuku.jalankan`, alasan wajib):
   MUNDUR → saldo awal tahun lain dibatalkan, posting tetap; MAJU → posting & saldo awal sebelum tahun baru dibatalkan,
   DITOLAK bila ada bulan terkunci sebelumnya. Isian bebas tahun pertama sudah DIHAPUS (penyebab 2025 sempat terposting).

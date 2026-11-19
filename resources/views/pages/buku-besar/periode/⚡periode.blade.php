@@ -430,7 +430,7 @@ new class extends Component {
                     @endif
                 </div>
                 <p class="text-xs text-muted dark:text-gray-400" role="status">
-                    Tahun pertama SIKEU: <a href="{{ route('buku-besar.saldo-awal') }}" wire:navigate class="font-semibold underline text-ink dark:text-gray-200">{{ SaldoAwal::tahunMulai() }}</a>
+                    Tahun pertama SIKEU: <a href="{{ route('buku-besar.pengaturan') }}" wire:navigate class="font-semibold underline text-ink dark:text-gray-200">{{ SaldoAwal::tahunMulai() }}</a>
                     · Kunci berikutnya: <b class="text-ink dark:text-gray-200">{{ SnapshotJurnal::labelPeriode($this->giliranKunci['periode']) }}</b>
                     @if (!$this->giliranKunci['ada'])
                         <span class="text-fg-warning">(tahun {{ substr($this->giliranKunci['periode'], 0, 4) }} belum dibuka)</span>

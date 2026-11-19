@@ -103,8 +103,8 @@ new class extends Component {
                     <h2>1. Pemasangan awal (sekali)</h2>
                     <ol class="mt-3 text-sm">
                         <li>Periksa {!! $tautan('master.peta-akun', 'Data Induk › Peta Akun SIRUS') !!}: status <b>Perlu perhatian</b> harus 0 — setiap akun SIRUS punya pasangan akun SIKEU.</li>
-                        <li>Buka {!! $tautan('buku-besar.periode', 'Pembukuan › Tarik Data SIRUS') !!}, ketik tahunnya, klik <b>Buka Tahun Buku</b> (membuat 12 periode).</li>
-                        <li>Isi {!! $tautan('buku-besar.saldo-awal', 'Pembukuan › Saldo Awal') !!} <b>hanya untuk tahun pertama SIKEU</b> (pengaturan di halaman itu): ketik saldo tiap akun per 1 Januari dari neraca penutup / audit, rekening koran, dan opname → <b>Simpan Draft</b> (boleh bertahap) → <b>Sahkan</b> (wajib seimbang). Saldo awal <b>tidak</b> diambil dari SIRUS — SIKEU sumber kebenaran keuangan.</li>
+                        <li>{!! $tautan('buku-besar.pengaturan', 'Pembukuan › Pengaturan Pembukuan') !!} (menu paling atas): periksa <b>tahun pertama SIKEU</b> dan akun saldo laba, lalu <b>Buka Tahun Buku</b> tahun pertama (membuat 12 periode).</li>
+                        <li>Isi {!! $tautan('buku-besar.saldo-awal', 'Pembukuan › Saldo Awal') !!} <b>hanya untuk tahun pertama SIKEU</b>: ketik saldo tiap akun per 1 Januari dari neraca penutup / audit, rekening koran, dan opname → <b>Simpan Draft</b> (boleh bertahap) → <b>Sahkan</b> (wajib seimbang). Saldo awal <b>tidak</b> diambil dari SIRUS — SIKEU sumber kebenaran keuangan.</li>
                         <li>Tahun sebelum tahun pertama (mis. 2025) <b>hanya untuk dicek</b>: boleh Tarik dari SIRUS &amp; Bandingkan Versi, tetapi tidak bisa disahkan, diberi jurnal umum, atau dikunci — saldonya sudah tercakup di saldo awal tahun pertama.</li>
                         <li>Tahun-tahun berikutnya <b>tidak diisi</b>: saldo akhir Desember diteruskan otomatis jadi saldo awal Januari. Mengisinya lagi = terhitung dua kali, jadi ditolak.</li>
                         <li>Pekerjaan yang dikerjakan sendiri di SIKEU (mis. HPP taksiran, penyusutan, utang di luar SIRUS): matikan <b>Masuk pembukuan</b> akun SIRUS-nya di {!! $tautan('master.peta-akun', 'Peta Akun SIRUS') !!} supaya tidak tercatat dua kali. Seluruh transaksi akun itu (kedua sisinya) tidak diposting — layar menampilkan dampaknya sebelum dimatikan.</li>
@@ -170,7 +170,7 @@ new class extends Component {
                 {{-- SET ULANG --}}
                 <section id="set-ulang" class="p-6 border scroll-mt-24 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                     <h2>4b. Memulai pembukuan dari tahun lain</h2>
-                    <p class="mt-2 text-sm">Pembukuan bisa dimulai dari tahun berapa pun (mis. 2023 atau 2024) lewat {!! $tautan('buku-besar.saldo-awal', 'Saldo Awal') !!} › Pengaturan › <b>Set Ulang</b> (tombol kuning, wajib alasan). Jendelanya menampilkan dampak sebelum disetujui.</p>
+                    <p class="mt-2 text-sm">Pembukuan bisa dimulai dari tahun berapa pun (mis. 2023 atau 2024) lewat {!! $tautan('buku-besar.pengaturan', 'Pengaturan Pembukuan') !!} › <b>Set Ulang</b> (tombol kuning, wajib alasan). Jendelanya menampilkan dampak sebelum disetujui.</p>
                     <ul class="mt-3 text-sm">
                         <li><b>Mundur</b> (mis. 2026 → 2024): saldo awal 2026 dibatalkan — 2026 nanti diteruskan dari Desember 2025. Posting yang ada tetap. Isi saldo awal 1 Januari 2024, buka &amp; proses 2024 dan 2025.</li>
                         <li><b>Maju</b> (mis. 2024 → 2026): posting &amp; saldo awal sebelum 2026 dibatalkan (hasil tarikan tetap, tahun itu jadi "hanya dicek"). <b>Ditolak</b> bila masih ada bulan terkunci sebelum 2026 — buka kuncinya dulu dari bulan terbaru.</li>

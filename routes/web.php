@@ -24,6 +24,8 @@ Route::middleware(['auth', 'menu'])->group(function () {
         ->name('master.format-kode');
 
     // ── BUKU BESAR ──
+    Route::livewire('/buku-besar/pengaturan', 'pages::buku-besar.pengaturan.pengaturan')
+        ->name('buku-besar.pengaturan');
     Route::livewire('/buku-besar/periode', 'pages::buku-besar.periode.periode')
         ->name('buku-besar.periode');
     Route::livewire('/buku-besar/saldo-awal', 'pages::buku-besar.saldo-awal.saldo-awal')

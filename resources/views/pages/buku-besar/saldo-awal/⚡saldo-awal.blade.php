@@ -4,7 +4,6 @@ use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
-use App\Support\BaganAkun;
 use App\Support\BukuBesar;
 use App\Support\Format;
 use App\Support\Pengaturan;
@@ -15,7 +14,7 @@ use App\Support\SaldoAwal;
  * pembukuan.tahun_mulai). Form berbentuk neraca: semua akun Detail Neraca aktif tampil per kelompok, diisi Debit /
  * Kredit + keterangan dasar angka, jumlah & selisih langsung terlihat → Simpan Draft → Sahkan (wajib seimbang).
  * Tahun sesudahnya: tampil saldo yang diteruskan otomatis dari saldo akhir Desember (baca saja).
- * Logika di App\Support\SaldoAwal. Hak: isi/sahkan = jurnal.posting; tahun pertama & akun laba = akun.kelola.
+ * Logika di App\Support\SaldoAwal. Hak: isi/sahkan = jurnal.posting. Tahun pertama & akun laba: Pengaturan Pembukuan.
  */
 new class extends Component {
     #[Url(as: 'tahun', except: '')]
@@ -29,14 +28,8 @@ new class extends Component {
 
     public string $akunPenyeimbang = '';
 
-    /** Pengaturan */
+    /** Tahun pertama SIKEU — diatur di Pembukuan › Pengaturan Pembukuan */
     public string $tahunMulai = '';
-
-    /** Jendela Set Ulang Tahun Pertama */
-    public string $tahunBaru = '';
-    public string $alasanSetUlang = '';
-    public string $akunLabaDitahan = '';
-    public string $akunLabaBerjalan = '';
 
     public function mount(): void
     {
@@ -44,9 +37,6 @@ new class extends Component {
         if (!$this->tahunSah()) {
             $this->tahun = $this->tahunMulai;
         }
-        $akunLaba = SaldoAwal::akunLaba();
-        $this->akunLabaDitahan = $akunLaba['ditahan'];
-        $this->akunLabaBerjalan = $akunLaba['berjalan'];
         $this->muatIsian();
     }
 
@@ -270,76 +260,6 @@ new class extends Component {
         $this->segarkan();
         $this->muatIsian();
     }
-
-    // ─── Pengaturan ───────────────────────────────────────────────────────────
-    public function bukaSetUlang(): void
-    {
-        abort_unless(auth()->user()?->can('tutupBuku.jalankan'), 403);
-        $this->reset(['tahunBaru', 'alasanSetUlang']);
-        $this->resetValidation();
-        $this->dispatch('open-modal', name: 'set-ulang-tahun');
-    }
-
-    /** Dampak set ulang untuk tahun yang sedang diketik di jendela (null bila belum 4 angka). */
-    #[Computed]
-    public function dampakSetUlang(): ?array
-    {
-        return preg_match('/^\d{4}$/', trim($this->tahunBaru)) ? SaldoAwal::dampakSetUlang((int) trim($this->tahunBaru)) : null;
-    }
-
-    public function setUlang(): void
-    {
-        abort_unless(auth()->user()?->can('tutupBuku.jalankan'), 403);
-        $this->resetValidation();
-        if (!preg_match('/^\d{4}$/', trim($this->tahunBaru))) {
-            $this->addError('tahunBaru', 'Ketik tahun 4 angka.');
-            return;
-        }
-        try {
-            $hasil = SaldoAwal::setUlangTahunMulai((int) trim($this->tahunBaru), $this->alasanSetUlang, auth()->id());
-            $this->tahunMulai = (string) SaldoAwal::tahunMulai();
-            $this->tahun = $this->tahunMulai;
-            $this->dispatch('toast', type: 'success', message: "Tahun pertama SIKEU sekarang {$this->tahunMulai}."
-                . ($hasil['saldo_awal'] !== [] ? ' Saldo awal dibatalkan: ' . implode(', ', $hasil['saldo_awal']) . '.' : '')
-                . ($hasil['jurnal_dibatalkan'] > 0 ? " {$hasil['jurnal_dibatalkan']} jurnal posting dibatalkan." : '')
-                . " Isi saldo awal {$this->tahunMulai} di bawah.");
-            $this->tutupSetUlang();
-        } catch (\Throwable $exception) {
-            $this->addError('alasanSetUlang', $exception->getMessage());
-            return; // jangan muatIsian(): resetValidation di dalamnya menghapus pesan ini
-        }
-        $this->segarkan();
-        $this->muatIsian();
-    }
-
-    public function tutupSetUlang(): void
-    {
-        $this->reset(['tahunBaru', 'alasanSetUlang']);
-        $this->resetValidation();
-        unset($this->dampakSetUlang);
-        $this->dispatch('close-modal', name: 'set-ulang-tahun');
-    }
-
-    public function simpanAkunLaba(): void
-    {
-        abort_unless(auth()->user()?->can('akun.kelola'), 403);
-        foreach ([$this->akunLabaDitahan, $this->akunLabaBerjalan] as $akunId) {
-            if (!isset($this->akunNeracaList[$akunId])) {
-                $this->dispatch('toast', type: 'error', message: 'Akun laba harus akun Detail Neraca yang aktif.');
-                return;
-            }
-        }
-        if ($this->akunLabaDitahan === $this->akunLabaBerjalan) {
-            $this->dispatch('toast', type: 'error', message: 'Akun laba ditahan dan laba berjalan harus berbeda.');
-            return;
-        }
-        $lama = SaldoAwal::akunLaba();
-        Pengaturan::simpan('akun.laba_ditahan', $this->akunLabaDitahan);
-        Pengaturan::simpan('akun.laba_berjalan', $this->akunLabaBerjalan);
-        BaganAkun::catatAudit('UBAH', 'SIKEUMST_PENGATURANS', 'akun.laba', $lama, SaldoAwal::akunLaba());
-        $this->dispatch('toast', type: 'success', message: 'Akun laba disimpan.');
-        $this->segarkan();
-    }
 };
 ?>
 
@@ -396,7 +316,8 @@ new class extends Component {
             @elseif ($this->mode === 'sebelum')
                 <div role="status" class="px-4 py-3 text-sm rounded-lg bg-info-tint text-info-deep dark:bg-blue-900/30 dark:text-blue-200">
                     Tahun {{ $tahun }} sebelum tahun pertama SIKEU ({{ $tahunMulai }}) — tidak ada saldo awal.
-                    Bila pembukuan SIKEU memang dimulai lebih awal, ubah <b>Tahun pertama SIKEU</b> di bagian Pengaturan di bawah.
+                    Bila pembukuan SIKEU memang dimulai lebih awal, Set Ulang tahun pertama di
+                    <a href="{{ route('buku-besar.pengaturan') }}" wire:navigate class="font-semibold underline">Pengaturan Pembukuan</a>.
                 </div>
 
             @elseif ($this->mode === 'diteruskan')
@@ -406,7 +327,7 @@ new class extends Component {
                     (diteruskan otomatis, angka di bawah ikut berubah bila jurnal {{ (int) $tahun - 1 }} berubah). Koreksi dilakukan lewat
                     <a href="{{ route('buku-besar.jurnal-umum') }}" wire:navigate class="font-semibold underline">Jurnal Umum</a> di tahun yang bersangkutan.
                     @if ($this->diteruskan['laba_tahun_lalu'] != 0.0)
-                        <br>Laba tahun lalu Rp {{ Format::uang($this->diteruskan['laba_tahun_lalu']) }} sudah dihitung ke akun laba ditahan ({{ $akunLabaDitahan }}).
+                        <br>Laba tahun lalu Rp {{ Format::uang($this->diteruskan['laba_tahun_lalu']) }} sudah dihitung ke akun laba ditahan ({{ SaldoAwal::akunLaba()['ditahan'] }}).
                     @endif
                 </div>
                 <div class="overflow-x-auto bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
@@ -443,7 +364,7 @@ new class extends Component {
             @elseif (!$this->periodeAwal)
                 <div class="p-6 text-center border border-dashed rounded-2xl border-hairline bg-canvas dark:bg-gray-800 dark:border-gray-700">
                     Tahun buku {{ $tahun }} belum dibuka.
-                    <a href="{{ route('buku-besar.periode', ['tahun' => $tahun]) }}" wire:navigate class="font-medium underline">Buka di Tarik Data SIRUS</a>.
+                    <a href="{{ route('buku-besar.pengaturan') }}" wire:navigate class="font-medium underline">Buka di Pengaturan Pembukuan</a>.
                 </div>
 
             @else
@@ -549,95 +470,6 @@ new class extends Component {
                     </div>
                 </div>
             @endif
-
-            {{-- PENGATURAN --}}
-            <x-border-form title="Pengaturan">
-                <div class="grid items-end grid-cols-1 gap-3 md:grid-cols-4">
-                    <div>
-                        <x-input-label value="Tahun pertama SIKEU" />
-                        <div class="flex items-center gap-2 mt-1">
-                            <span class="px-3 py-2 font-mono text-base font-semibold border rounded-lg border-hairline text-ink dark:text-gray-100 dark:border-gray-700">{{ $tahunMulai }}</span>
-                            @can('tutupBuku.jalankan')
-                                <x-warning-button type="button" wire:click="bukaSetUlang"><x-ikon nama="muat-ulang" /> Set Ulang</x-warning-button>
-                            @endcan
-                        </div>
-                    </div>
-                    @foreach (['akunLabaDitahan' => 'Laba ditahan (laba tahun-tahun lalu)', 'akunLabaBerjalan' => 'Laba tahun berjalan (nol per 1 Januari)'] as $properti => $judul)
-                        <div>
-                            <x-input-label for="{{ $properti }}" value="{{ $judul }}" />
-                            <x-select-input id="{{ $properti }}" wire:model="{{ $properti }}" :disabled="!auth()->user()?->can('akun.kelola')" class="mt-1">
-                                @foreach ($this->akunNeracaList as $akunId => $namaAkun)
-                                    @if (str_starts_with((string) $akunId, '3') || $akunId === $$properti)
-                                        <option value="{{ $akunId }}">{{ $akunId }} {{ $namaAkun }}</option>
-                                    @endif
-                                @endforeach
-                            </x-select-input>
-                        </div>
-                    @endforeach
-                    @can('akun.kelola')
-                        <div class="flex flex-wrap gap-2">
-                            <x-secondary-button type="button" wire:click="simpanAkunLaba" wire:loading.attr="disabled" wire:target="simpanAkunLaba"><x-ikon nama="simpan" /> Simpan Akun Laba</x-secondary-button>
-                        </div>
-                    @endcan
-                </div>
-                <p class="mt-2 text-[11px] text-muted dark:text-gray-400">Saldo awal hanya diisi untuk tahun pertama SIKEU; tahun berikutnya diteruskan otomatis. Set Ulang memindah tahun pertama (mis. mulai dari 2024) — dampaknya ditampilkan dulu.</p>
-            </x-border-form>
-
-            {{-- JENDELA SET ULANG TAHUN PERTAMA --}}
-            <x-modal name="set-ulang-tahun" size="2xl">
-                <div class="flex flex-col">
-                    <x-modul-dokumen.header judul="Set Ulang Tahun Pertama SIKEU"
-                        ikon="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" tutupAlpine="$wire.tutupSetUlang()">
-                        Sekarang {{ $tahunMulai }}. Pembukuan dimulai dari tahun baru: saldo awal diisi di tahun itu, lalu tiap tahun dikunci berurutan.
-                    </x-modul-dokumen.header>
-                    <div class="p-5 space-y-4 text-sm bg-canvas text-body dark:bg-gray-900 dark:text-gray-300">
-                        <div class="w-40">
-                            <x-input-label for="tahunBaru" value="Tahun pertama baru *" />
-                            <x-text-input id="tahunBaru" wire:model.live.debounce.400ms="tahunBaru" inputmode="numeric" maxlength="4" placeholder="mis. 2024" :error="$errors->has('tahunBaru')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('tahunBaru')" class="mt-1" />
-                        </div>
-
-                        @php $dampak = $this->dampakSetUlang; @endphp
-                        @if ($dampak)
-                            @if ($dampak['galat'])
-                                <div role="alert" class="flex gap-2 px-3 py-2 rounded-lg bg-danger-soft text-fg-danger-strong"><x-ikon-peringatan /><p>{{ $dampak['galat'] }}</p></div>
-                            @else
-                                <div class="p-3 space-y-2 border rounded-xl border-hairline dark:border-gray-700">
-                                    <p class="font-semibold text-ink dark:text-gray-100">
-                                        {{ $dampak['arah'] === 'mundur' ? 'Mundur' : 'Maju' }}: {{ $dampak['lama'] }} → {{ $dampak['baru'] }}. Yang terjadi:
-                                    </p>
-                                    <ul class="pl-5 space-y-1 list-disc">
-                                        @if ($dampak['saldo_awal'] !== [])
-                                            <li>Saldo awal <b>{{ implode(', ', $dampak['saldo_awal']) }}</b> dibatalkan{{ $dampak['arah'] === 'mundur' ? ' — tahun itu nanti diteruskan dari tahun sebelumnya' : '' }}.</li>
-                                        @endif
-                                        @if ($dampak['arah'] === 'maju')
-                                            <li>{{ count($dampak['periode_posting']) }} bulan terposting sebelum {{ $dampak['baru'] }} dibatalkan postingnya{{ $dampak['periode_posting'] !== [] ? ' (' . implode(', ', array_map(fn ($periode) => \App\Support\SnapshotJurnal::labelPeriode($periode), $dampak['periode_posting'])) . ')' : '' }}; hasil tarikan tetap disimpan, tahun itu jadi "hanya dicek".</li>
-                                        @else
-                                            <li>Posting yang sudah ada tetap; tahun {{ $dampak['baru'] }}–{{ $dampak['lama'] - 1 }} perlu ditarik &amp; diposting.</li>
-                                        @endif
-                                        <li>Isi <b>saldo awal 1 Januari {{ $dampak['baru'] }}</b> di halaman ini, lalu kunci berurutan mulai <b>01/{{ $dampak['baru'] }}</b> — tahun berikutnya baru bisa dikunci setelah tahun sebelumnya terkunci penuh.</li>
-                                        @if ($dampak['tahun_perlu_dibuka'] !== [])
-                                            <li>Tahun yang perlu dibuka di Tarik Data SIRUS: <b>{{ implode(', ', $dampak['tahun_perlu_dibuka']) }}</b>.</li>
-                                        @endif
-                                    </ul>
-                                </div>
-                            @endif
-                        @endif
-
-                        <div>
-                            <x-input-label for="alasanSetUlang" value="Alasan *" />
-                            <x-text-input id="alasanSetUlang" wire:model="alasanSetUlang" maxlength="300" placeholder="mis. pembukuan SIKEU dimulai dari laporan audit 2023" :error="$errors->has('alasanSetUlang')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('alasanSetUlang')" class="mt-1" />
-                        </div>
-                        <div class="flex justify-end gap-2">
-                            <x-secondary-button type="button" wire:click="tutupSetUlang"><x-ikon nama="batal" /> Batal</x-secondary-button>
-                            <x-warning-button type="button" wire:click="setUlang" wire:loading.attr="disabled" wire:target="setUlang" :disabled="!$dampak || !$dampak['boleh']">
-                                <x-ikon nama="setujui" /> Set Ulang
-                            </x-warning-button>
-                        </div>
-                    </div>
-                </div>
-            </x-modal>
         </div>
     </div>
 </div>
