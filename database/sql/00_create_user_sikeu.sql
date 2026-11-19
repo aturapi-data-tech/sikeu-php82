@@ -9,6 +9,8 @@
 --   1. 00_create_user_sikeu.sql   (file ini, sebagai SYSTEM)
 --   2. php artisan migrate        (tabel kerangka Laravel: users, roles, cache, jobs, identitas)
 --   3. 01_struktur_pembukuan.sql  (sebagai user SIKEU: tabel pembukuan)
+--   4. 02_bagan_akun.sql          (sebagai user SIKEU: bagan akun standar SAK EP)
+--   5. 03_peta_akun_sirus.sql     (sebagai user SIKEU: peta akun SIRUS -> SIKEU)
 -- =============================================================================
 SET DEFINE OFF
 

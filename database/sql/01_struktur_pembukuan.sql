@@ -61,7 +61,7 @@ CREATE SEQUENCE sq_sikeu_audit        START WITH 1 INCREMENT BY 1 CACHE 100;
 -- C. TABEL MASTER
 -- =============================================================================
 
--- C1. Kelompok akun (1 AKTIVA, 2 KEWAJIBAN, 3 EKUITAS, 4 PENDAPATAN, 5 BEBAN) - sama dengan TKACC_GR_ACCOUNTSES SIRUS
+-- C1. Kelompok akun = digit pertama kode akun (9 kelompok SAK EP, lihat 02_bagan_akun.sql)
 CREATE TABLE sikeumst_akun_kelompoks (
   kelompok_id      VARCHAR2(2)    NOT NULL,
   nama             VARCHAR2(50)   NOT NULL,
@@ -686,11 +686,15 @@ BEGIN SELECT sq_sikeu_audit.NEXTVAL INTO :new.log_id FROM dual; END;
 -- =============================================================================
 
 -- F1. Kelompok akun (selaras TKACC_GR_ACCOUNTSES SIRUS)
-INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('1', 'AKTIVA',     'D', 'N', 1);
-INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('2', 'KEWAJIBAN',  'K', 'N', 2);
-INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('3', 'EKUITAS',    'K', 'N', 3);
-INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('4', 'PENDAPATAN', 'K', 'L', 4);
-INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('5', 'BEBAN',      'D', 'L', 5);
+INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('1', 'ASET', 'D', 'N', 1);
+INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('2', 'LIABILITAS', 'K', 'N', 2);
+INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('3', 'EKUITAS', 'K', 'N', 3);
+INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('4', 'PENDAPATAN USAHA', 'K', 'L', 4);
+INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('5', 'BEBAN POKOK PELAYANAN', 'D', 'L', 5);
+INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('6', 'BEBAN USAHA', 'D', 'L', 6);
+INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('7', 'PENDAPATAN LAIN-LAIN', 'K', 'L', 7);
+INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('8', 'BEBAN LAIN-LAIN', 'D', 'L', 8);
+INSERT INTO sikeumst_akun_kelompoks (kelompok_id, nama, saldo_normal, jenis_laporan, urut) VALUES ('9', 'BEBAN PAJAK PENGHASILAN', 'D', 'L', 9);
 
 -- F2. Kategori aset - BAWAAN umur fiskal PMK 96/PMK.03/2009 (garis lurus). Akun jurnal diisi kemudian dari layar.
 INSERT INTO sikeumst_aset_kategoris (kode, nama, metode, umur_bulan, tarif_persen, created_at) VALUES ('KEL1',   'Bukan bangunan kelompok 1 (4 tahun)',  'GL',  48, 25,    SYSTIMESTAMP);

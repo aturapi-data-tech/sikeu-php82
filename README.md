@@ -78,6 +78,9 @@ Database (sekali):
 2. `php artisan migrate` — tabel kerangka Laravel (users, roles, cache, jobs, identitas).
 3. `database/sql/01_struktur_pembukuan.sql` — sebagai user `sikeu`: 25 tabel pembukuan (akun, periode, jurnal,
    saldo, template laporan, aset & penyusutan, HPP, hutang-piutang, snapshot SIRUS, audit).
+4. `database/sql/02_bagan_akun.sql` — bagan akun standar (SAK EP, 9 kelompok, 285 akun).
+5. `database/sql/03_peta_akun_sirus.sql` — peta seluruh akun SIRUS (219) ke bagan SIKEU.
+   Keduanya dibuat oleh `database/sql/tools/bagan_akun.php`: ubah bagan/peta di sana, jalankan ulang generatornya.
 
 Di **SIRUS**: isi `SIKEU_API_JWT_SECRET` (≥ 32 karakter acak) di `.env`, lalu `php artisan sikeu-api:akun`
 → salin username & password yang dicetak ke `.env` SIKEU.
@@ -86,7 +89,7 @@ Isi `.env` SIKEU (`DB_*` dengan `DB_USERNAME=sikeu`, `SIKEU_API_URL`, `SIKEU_API
 `IDENTITAS_*`), lalu:
 
 ```bash
-php artisan migrate          # lalu jalankan 01_struktur_pembukuan.sql sebagai user sikeu
+php artisan migrate          # lalu jalankan 01, 02, 03 (database/sql) sebagai user sikeu
 php artisan storage:link
 npm run build
 php artisan serve --port=8003
