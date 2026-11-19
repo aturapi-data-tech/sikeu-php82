@@ -94,7 +94,10 @@ class BukuBesar
                 'snap_id_sah' => $row->snap_id_sah ? (int) $row->snap_id_sah : null,
                 'versi_sah' => $row->versi_sah ? (int) $row->versi_sah : null,
                 'versi_list' => $versiList->map(fn ($versi) => (array) $versi)->values()->all(),
-                'ada_versi_baru' => $versiTerbaru && $row->versi_sah && (int) $versiTerbaru->versi > (int) $row->versi_sah,
+                // Tarikan terbaru dibanding versi yang disahkan: null (tidak ada yang lebih baru) / 'sama' / 'beda' (checksum)
+                'versi_terbaru' => $versiTerbaru ? (int) $versiTerbaru->versi : null,
+                'snap_id_terbaru' => $versiTerbaru ? (int) $versiTerbaru->snap_id : null,
+                'status_versi_baru' => $this->statusVersiBaru($versiList, $row),
                 'jurnal_sirus' => $jurnal->firstWhere('sumber', self::SUMBER_SIRUS),
                 'total_debit' => (float) $jurnal->sum('debit'),
                 'total_kredit' => (float) $jurnal->sum('kredit'),
@@ -102,6 +105,17 @@ class BukuBesar
                 'alasan_buka' => $row->alasan_buka,
             ];
         })->all();
+    }
+
+    private function statusVersiBaru($versiList, object $row): ?string
+    {
+        $versiTerbaru = $versiList->last();
+        if (!$versiTerbaru || !$row->snap_id_sah || (int) $versiTerbaru->snap_id === (int) $row->snap_id_sah) {
+            return null;
+        }
+        $versiSah = $versiList->firstWhere('snap_id', $row->snap_id_sah);
+
+        return $versiSah && $versiSah->checksum === $versiTerbaru->checksum ? 'sama' : 'beda';
     }
 
     // ─── Posting snapshot ────────────────────────────────────────────────────
