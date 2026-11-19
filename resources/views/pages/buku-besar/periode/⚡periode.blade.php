@@ -373,7 +373,7 @@ new class extends Component {
                     @endif
                 </div>
                 <div class="px-4 py-2 text-xs rounded-lg bg-info-tint text-info-deep dark:bg-blue-900/30 dark:text-blue-200 lg:max-w-2xl">
-                    Alur: <b>Tarik dari SIRUS</b> → <b>Sahkan & Posting</b> → periksa di Neraca Saldo → <b>Kunci</b>. Ketik tahun (mis. 2025) untuk menarik data tahun lama.
+                    Alur per baris (kolom Aksi): <b>Tarik dari SIRUS</b> → <b>Sahkan & Posting</b> → <b>Neraca Saldo</b> → <b>Kunci</b>. Ketik tahun (mis. 2025) untuk menarik data tahun lama.
                     Tarik ulang kapan saja bila data SIRUS berubah: hasil tarikan lama tetap disimpan dan bisa dibandingkan.
                     Selama periode Buka, versi lain boleh disahkan (posting lama dibatalkan, tetap tersimpan). Kunci berurutan dari bulan terlama.
                 </div>
@@ -488,20 +488,23 @@ new class extends Component {
                                         @else
                                             <span class="text-xs text-muted">belum ada</span>
                                         @endif
-                                        @if ($row['status'] === 'B' && $row['periode'] <= now()->format('Ym') && $snapIdProses === null && !$modeAntrean)
-                                            @can('snapshot.ambil')
-                                                <div class="mt-1">
-                                                    <button type="button" wire:click="ambilSnapshot('{{ $row['periode'] }}')" wire:loading.attr="disabled" wire:target="ambilSnapshot('{{ $row['periode'] }}')"
-                                                        class="text-xs font-medium rounded text-brand-green hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green dark:text-brand-lime">
-                                                        <span class="inline-flex items-center gap-1"><x-ikon nama="muat-ulang" ukuran="w-3.5 h-3.5" /> {{ count($row['versi_list']) > 0 ? 'Tarik ulang' : 'Tarik dari SIRUS' }}</span>
-                                                    </button>
-                                                </div>
-                                            @endcan
-                                        @endif
                                     </td>
                                     <td class="text-right tabular-nums">{{ $row['total_debit'] > 0 ? Format::uang($row['total_debit']) : '-' }}</td>
                                     <td class="ds-c">
                                         <div class="flex flex-wrap justify-end gap-2">
+                                            @if ($row['status'] === 'B' && $row['periode'] <= now()->format('Ym') && $snapIdProses === null && !$modeAntrean)
+                                                @can('snapshot.ambil')
+                                                    @if (count($row['versi_list']) > 0)
+                                                        <x-secondary-button type="button" class="px-3 py-1.5 text-sm" wire:click="ambilSnapshot('{{ $row['periode'] }}')">
+                                                            <x-ikon nama="muat-ulang" /> Tarik ulang
+                                                        </x-secondary-button>
+                                                    @else
+                                                        <x-primary-button type="button" class="px-3 py-1.5 text-sm" wire:click="ambilSnapshot('{{ $row['periode'] }}')">
+                                                            <x-ikon nama="muat-ulang" /> Tarik dari SIRUS
+                                                        </x-primary-button>
+                                                    @endif
+                                                @endcan
+                                            @endif
                                             @if ($row['status'] === 'B' && count($row['versi_list']) > 0 && $snapIdProses === null && !$modeAntrean)
                                                 @can('jurnal.posting')
                                                     <x-primary-button type="button" class="px-3 py-1.5 text-sm" wire:click="bukaPosting('{{ $row['periode'] }}')">
@@ -524,8 +527,10 @@ new class extends Component {
                                                 @endcan
                                             @endif
                                             @if ($row['versi_sah'])
-                                                <a href="{{ route('buku-besar.neraca-saldo', ['periode' => $row['periode']]) }}" wire:navigate
-                                                    class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-lg text-brand-green hover:underline dark:text-brand-lime">Neraca Saldo</a>
+                                                <x-outline-button type="button" class="px-3 py-1.5 text-sm"
+                                                    x-on:click="Livewire.navigate('{{ route('buku-besar.neraca-saldo', ['periode' => $row['periode']]) }}')">
+                                                    <x-ikon nama="lihat" /> Neraca Saldo
+                                                </x-outline-button>
                                             @endif
                                         </div>
                                     </td>

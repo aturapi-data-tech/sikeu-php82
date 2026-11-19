@@ -2,7 +2,6 @@
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
 use App\Support\BukuBesar;
@@ -54,13 +53,6 @@ new class extends Component {
             $this->periode = (string) (DB::table('sikeumst_periodes')->whereNotNull('snap_id_sah')->max('periode')
                 ?? DB::table('sikeumst_periodes')->max('periode') ?? now()->format('Ym'));
         }
-    }
-
-    /** Tombol Tarik dari SIRUS selesai → hitung ulang neraca saldo. */
-    #[On('tarik-sirus.selesai')]
-    public function segarkanSetelahTarik(): void
-    {
-        unset($this->hasil, $this->akunTersaring, $this->jumlahBerlawanan, $this->kelompokRows, $this->seimbang);
     }
 
     public function resetFilters(): void
@@ -172,7 +164,6 @@ new class extends Component {
                                 <x-ikon-peringatan /> {{ $this->jumlahBerlawanan }} saldo berlawanan{{ $hanyaBerlawanan ? ' (disaring)' : '' }}
                             </button>
                         @endif
-                        <livewire:pages::buku-besar.tarik-sirus.tarik-sirus-tombol :periode="$periode" wire:key="tarik-sirus-{{ $periode }}" />
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
