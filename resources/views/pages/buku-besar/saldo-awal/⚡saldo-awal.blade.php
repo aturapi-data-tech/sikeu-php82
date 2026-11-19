@@ -375,9 +375,10 @@ new class extends Component {
                 </div>
 
                 <div class="bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                    <div class="overflow-x-auto">
+                    {{-- Tabel bergulir di dalam kartu: judul kolom melekat di atas, jumlah & tombol melekat di bawah --}}
+                    <div class="overflow-auto rounded-t-2xl max-h-[calc(100vh-19rem)]">
                         <table class="ds-table ds-table-entri">
-                            <thead class="sticky z-10 top-20">
+                            <thead class="sticky top-0 z-10 shadow-[0_1px_0_0_var(--hairline)]">
                                 <tr>
                                     <th class="w-28">Akun</th>
                                     <th>Nama Akun</th>
@@ -429,7 +430,7 @@ new class extends Component {
                     </div>
 
                     {{-- JUMLAH + AKSI (melekat di bawah) --}}
-                    <div class="sticky bottom-0 z-10 px-4 py-3 space-y-3 border-t bg-surface-soft border-hairline rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <div class="px-4 py-3 space-y-3 border-t bg-surface-soft border-hairline rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
                         <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                             <span>Total Debit <b class="tabular-nums text-ink dark:text-gray-100">{{ Format::uang($jumlah['debit']) }}</b></span>
                             <span>Total Kredit <b class="tabular-nums text-ink dark:text-gray-100">{{ Format::uang($jumlah['kredit']) }}</b></span>

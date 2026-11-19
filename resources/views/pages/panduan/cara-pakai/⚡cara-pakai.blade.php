@@ -174,6 +174,7 @@ new class extends Component {
                     <ul class="mt-3 text-sm">
                         <li><b>Mundur</b> (mis. 2026 → 2024): saldo awal 2026 dibatalkan — 2026 nanti diteruskan dari Desember 2025. Posting yang ada tetap. Isi saldo awal 1 Januari 2024, buka &amp; proses 2024 dan 2025.</li>
                         <li><b>Maju</b> (mis. 2024 → 2026): posting &amp; saldo awal sebelum 2026 dibatalkan (hasil tarikan tetap, tahun itu jadi "hanya dicek"). <b>Ditolak</b> bila masih ada bulan terkunci sebelum 2026 — buka kuncinya dulu dari bulan terbaru.</li>
+                        <li><b>Reset Tahun</b> (Pengaturan Pembukuan › Tahun buku, kuning, wajib alasan): mengulang pembukuan satu tahun — posting SIRUS dilepas (hasil tarikan tetap, tinggal Sahkan lagi), jurnal umum terposting kembali jadi draft, saldo awal tidak disentuh. Ditolak bila ada bulan terkunci di tahun itu atau sesudahnya. Tahun yang belum dipakai bisa <b>Hapus Tahun Buku</b> (kembali "Belum dibuka").</li>
                         <li><b>Kunci per tahun berurutan:</b> 01/2024 … 12/2024 harus terkunci dulu, baru 2025, baru 2026. Tahun yang belum dibuka tidak dilewati — "Kunci berikutnya" di Tarik Data SIRUS selalu menunjukkan gilirannya.</li>
                     </ul>
                 </section>

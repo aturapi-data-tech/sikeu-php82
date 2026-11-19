@@ -198,14 +198,15 @@ new class extends Component {
             $this->dispatch('toast', type: 'success', message: $langsungPosting ? "Jurnal {$nomor} diposting." : "Draft {$nomor} disimpan.");
             $this->periode = JurnalUmum::periodeDariTanggal($tanggal->format('Y-m-d'));
             $this->dispatch('jurnal-umum.disimpan');
-            $this->tutupForm();
+            $this->closeModal();
         } catch (\Throwable $exception) {
             $this->addError('formUmum', $exception->getMessage());
         }
         unset($this->rows);
     }
 
-    public function tutupForm(): void
+    /** Dipanggil x-dirty-modal-content (tombol ✕, Escape, klik latar, Tutup tanpa simpan) — nama WAJIB closeModal. */
+    public function closeModal(): void
     {
         $this->reset(['jurnalId', 'formNomor', 'formTanggal', 'formKeterangan', 'formBaris']);
         $this->formStatus = 'D';

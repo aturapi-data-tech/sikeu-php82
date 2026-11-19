@@ -12,11 +12,16 @@ use App\Support\SnapshotJurnal;
 /**
  * PENGATURAN PEMBUKUAN — langkah pertama sebelum membukukan (menu Pembukuan paling atas):
  *   1. Tahun pertama SIKEU + Set Ulang (hak tutupBuku.jalankan, alasan wajib, pratinjau dampak — SaldoAwal::dampakSetUlang).
- *   2. Tahun buku sejak tahun pertama: status (belum dibuka / n dari 12 terkunci) + Buka Tahun Buku (hak periode.kunci).
+ *   2. Tahun buku sejak tahun pertama: status (belum dibuka / n dari 12 terkunci) + Buka Tahun Buku (hak periode.kunci);
+ *      Reset Tahun (posting dibatalkan, jurnal umum jadi draft) / Hapus Tahun Buku bila belum dipakai (hak tutupBuku.jalankan).
  *   3. Akun saldo laba: laba ditahan & laba tahun berjalan (hak akun.kelola).
  * Lanjutannya: Saldo Awal (tahun pertama) → Tarik Data SIRUS.
  */
 new class extends Component {
+    /** Jendela Reset Tahun */
+    public ?int $tahunReset = null;
+    public string $alasanReset = '';
+
     /** Jendela Set Ulang */
     public string $tahunBaru = '';
     public string $alasanSetUlang = '';
@@ -46,11 +51,16 @@ new class extends Component {
                 SUM(CASE WHEN status IN ('K', 'T') THEN 1 ELSE 0 END) AS terkunci,
                 SUM(CASE WHEN snap_id_sah IS NOT NULL THEN 1 ELSE 0 END) AS diposting")
             ->groupByRaw('SUBSTR(periode, 1, 4)')->get()->keyBy('tahun');
+        // jurnal aktif per tahun (posting/draft apa pun, atau jurnal non-SIRUS termasuk yang dibatalkan) → Reset, bukan Hapus
+        $jurnalAktif = DB::table('sikeutxn_jurnal_hdrs')
+            ->where(fn ($subQuery) => $subQuery->whereIn('status', ['P', 'D'])->orWhere('sumber', '<>', BukuBesar::SUMBER_SIRUS))
+            ->selectRaw('SUBSTR(periode, 1, 4) AS tahun, COUNT(*) AS jumlah')->groupByRaw('SUBSTR(periode, 1, 4)')->pluck('jumlah', 'tahun');
         $tahunAkhir = max((int) now()->format('Y'), $this->tahunMulai, ...$ringkasan->keys()->map(fn ($tahun) => (int) $tahun)->all());
         $rows = [];
         for ($tahun = $this->tahunMulai; $tahun <= $tahunAkhir; $tahun++) {
             $row = $ringkasan[(string) $tahun] ?? null;
-            $rows[] = ['tahun' => $tahun, 'dibuka' => $row !== null, 'terkunci' => (int) ($row->terkunci ?? 0), 'diposting' => (int) ($row->diposting ?? 0)];
+            $rows[] = ['tahun' => $tahun, 'dibuka' => $row !== null, 'terkunci' => (int) ($row->terkunci ?? 0), 'diposting' => (int) ($row->diposting ?? 0),
+                'ada_jurnal' => (int) ($jurnalAktif[(string) $tahun] ?? 0) > 0];
         }
 
         return $rows;
@@ -72,7 +82,7 @@ new class extends Component {
 
     private function segarkan(): void
     {
-        unset($this->tahunMulai, $this->tahunList, $this->giliranKunci, $this->dampakSetUlang);
+        unset($this->tahunMulai, $this->tahunList, $this->giliranKunci, $this->dampakSetUlang, $this->dampakReset);
     }
 
     // ─── Tahun buku ───────────────────────────────────────────────────────────
@@ -86,6 +96,58 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: $exception->getMessage());
         }
         $this->segarkan();
+    }
+
+    public function hapusTahun(int $tahun): void
+    {
+        abort_unless(auth()->user()?->can('tutupBuku.jalankan'), 403);
+        try {
+            (new BukuBesar())->hapusTahunBuku($tahun, auth()->id());
+            $this->dispatch('toast', type: 'success', message: "Tahun buku {$tahun} dihapus — kembali Belum dibuka. Hasil tarikan SIRUS tetap tersimpan.");
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        }
+        $this->segarkan();
+    }
+
+    public function bukaReset(int $tahun): void
+    {
+        abort_unless(auth()->user()?->can('tutupBuku.jalankan'), 403);
+        $this->tahunReset = $tahun;
+        $this->alasanReset = '';
+        $this->resetValidation();
+        unset($this->dampakReset);
+        $this->dispatch('open-modal', name: 'reset-tahun');
+    }
+
+    #[Computed]
+    public function dampakReset(): ?array
+    {
+        return $this->tahunReset ? (new BukuBesar())->dampakResetTahun($this->tahunReset) : null;
+    }
+
+    public function resetTahun(): void
+    {
+        abort_unless(auth()->user()?->can('tutupBuku.jalankan'), 403);
+        $this->resetValidation();
+        try {
+            $hasil = (new BukuBesar())->resetTahun((int) $this->tahunReset, $this->alasanReset, auth()->id());
+        } catch (\Throwable $exception) {
+            $this->addError('alasanReset', $exception->getMessage());
+            return;
+        }
+        $this->dispatch('toast', type: 'success', message: "Tahun {$hasil['tahun']} direset: " . count($hasil['periode_posting']) . ' bulan dilepas postingnya'
+            . ($hasil['jurnal_umum'] > 0 ? ", {$hasil['jurnal_umum']} jurnal umum kembali jadi draft" : '') . '. Hasil tarikan tetap — tinggal Sahkan lagi.');
+        $this->tutupReset();
+        $this->segarkan();
+    }
+
+    public function tutupReset(): void
+    {
+        $this->reset(['tahunReset', 'alasanReset']);
+        $this->resetValidation();
+        unset($this->dampakReset);
+        $this->dispatch('close-modal', name: 'reset-tahun');
     }
 
     // ─── Set ulang tahun pertama ──────────────────────────────────────────────
@@ -216,6 +278,16 @@ new class extends Component {
                                                     <x-outline-button type="button" class="px-3 py-1.5 text-sm" x-on:click="Livewire.navigate('{{ route('buku-besar.saldo-awal', ['tahun' => $row['tahun']]) }}')"><x-ikon nama="lihat" /> Saldo Awal</x-outline-button>
                                                 @endif
                                                 <x-outline-button type="button" class="px-3 py-1.5 text-sm" x-on:click="Livewire.navigate('{{ route('buku-besar.periode', ['tahun' => $row['tahun']]) }}')"><x-ikon nama="lihat" /> Tarik Data SIRUS</x-outline-button>
+                                                @can('tutupBuku.jalankan')
+                                                    @if ($row['ada_jurnal'] || $row['diposting'] > 0)
+                                                        <x-warning-button type="button" class="px-3 py-1.5 text-sm" wire:click="bukaReset({{ $row['tahun'] }})"><x-ikon nama="muat-ulang" /> Reset Tahun</x-warning-button>
+                                                    @elseif ($row['terkunci'] === 0)
+                                                        <x-confirm-button variant="danger-soft" action="hapusTahun({{ $row['tahun'] }})" title="Hapus Tahun Buku {{ $row['tahun'] }}"
+                                                            message="Tahun {{ $row['tahun'] }} belum dipakai. Ke-12 periodenya dihapus dan kembali Belum dibuka; hasil tarikan SIRUS tetap tersimpan.">
+                                                            <x-ikon nama="hapus" /> Hapus Tahun Buku
+                                                        </x-confirm-button>
+                                                    @endif
+                                                @endcan
                                             @endif
                                         </div>
                                     </td>
@@ -254,6 +326,41 @@ new class extends Component {
             </div>
         </div>
     </div>
+
+    {{-- JENDELA RESET TAHUN --}}
+    <x-modal name="reset-tahun" size="2xl">
+        <div class="flex flex-col">
+            <x-modul-dokumen.header judul="Reset Tahun {{ $tahunReset }}"
+                ikon="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" tutupAlpine="$wire.tutupReset()">
+                Mengulang pembukuan satu tahun: posting dilepas, hasil tarikan SIRUS tetap — tinggal Sahkan lagi.
+            </x-modul-dokumen.header>
+            <div class="p-5 space-y-4 text-sm bg-canvas text-body dark:bg-gray-900 dark:text-gray-300">
+                @php $dampakReset = $this->dampakReset; @endphp
+                @if ($dampakReset)
+                    @if ($dampakReset['galat'])
+                        <div role="alert" class="flex gap-2 px-3 py-2 rounded-lg bg-danger-soft text-fg-danger-strong"><x-ikon-peringatan /><p>{{ $dampakReset['galat'] }}</p></div>
+                    @else
+                        <ul class="p-3 pl-8 space-y-1 border list-disc rounded-xl border-hairline dark:border-gray-700">
+                            <li><b>{{ count($dampakReset['periode_posting']) }} bulan</b> dilepas postingnya ({{ $dampakReset['jurnal_sirus'] }} jurnal SIRUS dibatalkan){{ $dampakReset['periode_posting'] !== [] ? ': ' . implode(', ', array_map(fn ($periode) => SnapshotJurnal::labelPeriode($periode), $dampakReset['periode_posting'])) : '' }}.</li>
+                            <li><b>{{ $dampakReset['jurnal_umum'] }} jurnal umum</b> terposting dikembalikan jadi <b>draft</b> — tidak hilang, bisa diposting lagi.</li>
+                            <li>Saldo awal tidak disentuh; hasil tarikan SIRUS tetap tersimpan.</li>
+                        </ul>
+                    @endif
+                @endif
+                <div>
+                    <x-input-label for="alasanReset" value="Alasan *" />
+                    <x-text-input id="alasanReset" wire:model="alasanReset" maxlength="300" placeholder="mis. peta akun diperbaiki, posting ulang setahun" :error="$errors->has('alasanReset')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('alasanReset')" class="mt-1" />
+                </div>
+                <div class="flex justify-end gap-2">
+                    <x-secondary-button type="button" wire:click="tutupReset"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                    <x-danger-button type="button" wire:click="resetTahun" wire:loading.attr="disabled" wire:target="resetTahun" :disabled="!$dampakReset || !$dampakReset['boleh']">
+                        <x-ikon nama="muat-ulang" /> Reset Tahun {{ $tahunReset }}
+                    </x-danger-button>
+                </div>
+            </div>
+        </div>
+    </x-modal>
 
     {{-- JENDELA SET ULANG TAHUN PERTAMA --}}
     <x-modal name="set-ulang-tahun" size="2xl">

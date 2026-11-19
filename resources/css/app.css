@@ -264,6 +264,9 @@
 .ds-td-class { @apply text-xs; font-family:var(--mono); color:var(--primary); white-space:nowrap; }
 .ds-td-strong{ @apply font-medium; color:var(--ink); }
 .ds-table .ds-c { text-align:center; }
+/* Kelas perataan pada sel menang atas text-align:left bawaan judul (.ds-table thead th lebih spesifik dari .text-right) */
+.ds-table th.text-right, .ds-table td.text-right { text-align:right; }
+.ds-table th.text-center, .ds-table td.text-center { text-align:center; }
 .ds-table-foot { @apply font-sans text-caption; padding:13px 24px; color:var(--muted);
     border-top:1px solid var(--hairline-soft); }
 

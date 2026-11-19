@@ -66,6 +66,108 @@ class BukuBesar
     }
 
     /**
+     * Dampak Reset Tahun: posting SIRUS dibatalkan (versi sah dilepas, hasil tarikan tetap), jurnal umum terposting
+     * dikembalikan jadi DRAFT (pekerjaan manual tidak hilang), saldo awal TIDAK disentuh. Ditolak bila ada bulan
+     * terkunci di tahun itu atau sesudahnya (buka kunci dulu dari bulan terbaru).
+     * @return array{tahun: int, periode_posting: array<int, string>, jurnal_sirus: int, jurnal_umum: int, terkunci: array<int, string>, boleh: bool, galat: ?string}
+     */
+    public function dampakResetTahun(int $tahun): array
+    {
+        $dari = sprintf('%04d01', $tahun);
+        $sampai = sprintf('%04d12', $tahun);
+        $hasil = [
+            'tahun' => $tahun,
+            'periode_posting' => DB::table('sikeumst_periodes')->whereBetween('periode', [$dari, $sampai])->whereNotNull('snap_id_sah')
+                ->orderBy('periode')->pluck('periode')->map(fn ($nilai) => (string) $nilai)->all(),
+            'jurnal_sirus' => DB::table('sikeutxn_jurnal_hdrs')->whereBetween('periode', [$dari, $sampai])->where('sumber', self::SUMBER_SIRUS)->where('status', 'P')->count(),
+            'jurnal_umum' => DB::table('sikeutxn_jurnal_hdrs')->whereBetween('periode', [$dari, $sampai])->where('sumber', JurnalUmum::SUMBER)->where('status', 'P')->count(),
+            'terkunci' => DB::table('sikeumst_periodes')->where('periode', '>=', $dari)->whereIn('status', [self::STATUS_KUNCI, self::STATUS_TUTUP])
+                ->orderBy('periode')->pluck('periode')->map(fn ($nilai) => (string) $nilai)->all(),
+            'boleh' => false, 'galat' => null,
+        ];
+        if (!DB::table('sikeumst_tahun_bukus')->where('tahun', $tahun)->exists()) {
+            $hasil['galat'] = "Tahun buku {$tahun} belum dibuka.";
+        } elseif ($hasil['terkunci'] !== []) {
+            $hasil['galat'] = 'Masih ada ' . count($hasil['terkunci']) . " bulan terkunci di {$tahun} atau sesudahnya (terakhir "
+                . SnapshotJurnal::labelPeriode((string) end($hasil['terkunci'])) . ') — buka kuncinya dulu dari bulan terbaru.';
+        } elseif ($hasil['periode_posting'] === [] && $hasil['jurnal_umum'] === 0) {
+            $hasil['galat'] = "Tidak ada posting di {$tahun} — tidak ada yang perlu direset.";
+        } else {
+            $hasil['boleh'] = true;
+        }
+
+        return $hasil;
+    }
+
+    /** Reset Tahun (lihat dampakResetTahun). Alasan wajib, tercatat di audit. */
+    public function resetTahun(int $tahun, string $alasan, ?int $userId): array
+    {
+        $alasan = trim($alasan);
+        if (mb_strlen($alasan) < self::ALASAN_MIN || !BaganAkun::teksAman($alasan)) {
+            throw new RuntimeException('Alasan wajib, minimal ' . self::ALASAN_MIN . ' karakter, tanpa simbol khusus.');
+        }
+
+        return DB::transaction(function () use ($tahun, $alasan, $userId) {
+            $dampak = $this->dampakResetTahun($tahun);
+            if (!$dampak['boleh']) {
+                throw new RuntimeException($dampak['galat'] ?? 'Tidak bisa direset.');
+            }
+            $dari = sprintf('%04d01', $tahun);
+            $sampai = sprintf('%04d12', $tahun);
+            $sekarang = now();
+            DB::table('sikeutxn_jurnal_hdrs')->whereBetween('periode', [$dari, $sampai])->where('sumber', self::SUMBER_SIRUS)->where('status', 'P')
+                ->update(['status' => 'B', 'dibatalkan_oleh' => $userId, 'dibatalkan_at' => $sekarang,
+                    'alasan_batal' => mb_substr("Reset tahun {$tahun}: {$alasan}", 0, 500), 'updated_at' => $sekarang]);
+            DB::table('sikeutxn_jurnal_hdrs')->whereBetween('periode', [$dari, $sampai])->where('sumber', JurnalUmum::SUMBER)->where('status', 'P')
+                ->update(['status' => 'D', 'diposting_oleh' => null, 'diposting_at' => null, 'updated_at' => $sekarang]);
+            DB::table('sikeumst_periodes')->whereBetween('periode', [$dari, $sampai])->update(['snap_id_sah' => null, 'updated_at' => $sekarang]);
+            BaganAkun::catatAudit('RESET_TAHUN', 'SIKEUMST_TAHUN_BUKUS', (string) $tahun, ['periode_posting' => $dampak['periode_posting']],
+                ['jurnal_sirus_dibatalkan' => $dampak['jurnal_sirus'], 'jurnal_umum_jadi_draft' => $dampak['jurnal_umum']], $alasan);
+
+            return $dampak;
+        });
+    }
+
+    /**
+     * Hapus tahun buku yang belum dipakai (kembali "Belum dibuka"): hanya bila tidak ada jurnal terposting / draft,
+     * tidak ada jurnal umum atau saldo awal sama sekali, dan tidak ada bulan terkunci. Jurnal SIRUS yang sudah
+     * dibatalkan ikut dihapus (bisa dibuat ulang dari hasil tarikan); hasil tarikan SIRUS tetap.
+     */
+    public function hapusTahunBuku(int $tahun, ?int $userId): void
+    {
+        DB::transaction(function () use ($tahun, $userId) {
+            $dari = sprintf('%04d01', $tahun);
+            $sampai = sprintf('%04d12', $tahun);
+            if (!DB::table('sikeumst_tahun_bukus')->where('tahun', $tahun)->exists()) {
+                throw new RuntimeException("Tahun buku {$tahun} belum dibuka.");
+            }
+            $jurnal = DB::table('sikeutxn_jurnal_hdrs')->whereBetween('periode', [$dari, $sampai]);
+            if ((clone $jurnal)->whereIn('status', ['P', 'D'])->exists() || (clone $jurnal)->where('sumber', '<>', self::SUMBER_SIRUS)->exists()) {
+                throw new RuntimeException("Tahun {$tahun} sudah punya jurnal (posting, draft, jurnal umum, atau saldo awal) — pakai Reset Tahun / batalkan dulu.");
+            }
+            if (DB::table('sikeumst_periodes')->whereBetween('periode', [$dari, $sampai])->where('status', '<>', self::STATUS_BUKA)->exists()
+                || DB::table('sikeumst_periodes')->whereBetween('periode', [$dari, $sampai])->whereNotNull('snap_id_sah')->exists()) {
+                throw new RuntimeException("Tahun {$tahun} masih punya bulan terkunci / terposting.");
+            }
+            foreach (['sikeutxn_aset_susuts', 'sikeutxn_hpp_hdrs', 'sikeutxn_saldo_akuns'] as $tabel) {
+                if (DB::table($tabel)->whereBetween('periode', [$dari, $sampai])->exists()) {
+                    throw new RuntimeException("Tahun {$tahun} sudah dipakai di {$tabel}.");
+                }
+            }
+            $batalList = (clone $jurnal)->pluck('jurnal_id');
+            if ($batalList->isNotEmpty()) {
+                foreach ($batalList->chunk(500) as $potongan) {
+                    DB::table('sikeutxn_jurnal_dtls')->whereIn('jurnal_id', $potongan->all())->delete();
+                    DB::table('sikeutxn_jurnal_hdrs')->whereIn('jurnal_id', $potongan->all())->delete();
+                }
+            }
+            DB::table('sikeumst_periodes')->whereBetween('periode', [$dari, $sampai])->delete();
+            DB::table('sikeumst_tahun_bukus')->where('tahun', $tahun)->delete();
+            BaganAkun::catatAudit('HAPUS_TAHUN', 'SIKEUMST_TAHUN_BUKUS', (string) $tahun, ['tahun' => $tahun, 'jurnal_batal_dihapus' => $batalList->count()], null);
+        });
+    }
+
+    /**
      * Ringkasan 12 periode satu tahun untuk layar Tarik Data SIRUS.
      * @return array<int, array<string, mixed>>
      */

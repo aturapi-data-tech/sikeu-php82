@@ -232,6 +232,10 @@ gilirannya) · abu = aksi rutin / alternatif (Tarik, Tarik ulang, Ganti Versi) �
 - **Set Ulang tahun pertama** (`SaldoAwal::dampakSetUlang/setUlangTahunMulai`, hak `tutupBuku.jalankan`, alasan wajib):
   MUNDUR → saldo awal tahun lain dibatalkan, posting tetap; MAJU → posting & saldo awal sebelum tahun baru dibatalkan,
   DITOLAK bila ada bulan terkunci sebelumnya. Isian bebas tahun pertama sudah DIHAPUS (penyebab 2025 sempat terposting).
+- **Reset Tahun / Hapus Tahun Buku** (`BukuBesar::dampakResetTahun/resetTahun/hapusTahunBuku`, hak `tutupBuku.jalankan`):
+  reset = posting SIRUS dibatalkan + snap_id_sah dilepas, jurnal umum P → DRAFT, saldo awal tidak disentuh; DITOLAK bila ada
+  bulan terkunci di tahun itu atau sesudahnya. Hapus hanya tahun tanpa jurnal aktif/jurnal umum/saldo awal (jurnal SIRUS
+  berstatus batal ikut dihapus karena FK ke periode; hasil tarikan tetap).
 - **Giliran kunci lintas tahun** (`BukuBesar::giliranKunci()`): bulan pertama sejak 01/tahun pertama yang belum Kunci,
   TERMASUK tahun yang belum dibuka (tidak dilewati) → 2024 terkunci penuh dulu, baru 2025, baru 2026.
 - **Akun SIRUS "Masuk pembukuan"** (`sikeumst_peta_akun_sirus.dibukukan`, DDL 08): '0' = seluruh baris snapshot yang
