@@ -129,51 +129,31 @@ class LaporanKeuangan
     }
 
     /**
-     * Laporan Laba Rugi untuk satu periode: kolom bulan berjalan & Januari s/d periode.
-     * @return array{template: ?object, baris: array, kolom: array, pemeriksaan: array}
+     * Inti hitung template — dipakai semua laporan.
+     * @param array $barisList         hasil barisTemplate()
+     * @param array<string,string> $akunCakupan  akun Detail yang WAJIB tertampung tepat sekali (id => nama)
+     * @param array $nilaiPerKolom     [kolom][akun_id] => ['D' => debit, 'K' => kredit, 'M' => debit-kredit, 'S' => saldo akhir bertanda]
+     * @return array{baris: array, galat: array, yatim: array, dobel: array}
      */
-    public static function labaRugi(string $periode): array
+    public static function hitungTemplate(array $barisList, array $akunCakupan, array $nilaiPerKolom): array
     {
-        $template = self::template(self::JENIS_LABARUGI);
-        if (!$template) {
-            return ['template' => null, 'baris' => [], 'kolom' => [], 'pemeriksaan' => ['galat' => ['Template Laba Rugi belum ada — jalankan database/sql/05_template_laporan.sql.']]];
-        }
-        $barisList = self::barisTemplate((int) $template->lap_id);
-        $kolomList = [
-            'bulan' => ['judul' => SnapshotJurnal::labelPeriode($periode), 'dari' => $periode, 'sampai' => $periode],
-            'ytd' => ['judul' => '01 s/d ' . SnapshotJurnal::labelPeriode($periode), 'dari' => substr($periode, 0, 4) . '01', 'sampai' => $periode],
-        ];
-
-        $akunLabaRugi = DB::table('sikeumst_akuns as a')->join('sikeumst_akun_kelompoks as k', 'k.kelompok_id', '=', 'a.kelompok_id')
-            ->where('a.tipe', 'D')->where('k.jenis_laporan', 'L')->orderBy('a.akun_id')->pluck('a.nama', 'a.akun_id')->all();
-        $akunPerBaris = self::akunPerBaris($barisList, array_keys($akunLabaRugi), self::leluhurPerAkun());
-
-        $mutasiPerKolom = [];
-        foreach ($kolomList as $kunci => $kolom) {
-            $mutasiPerKolom[$kunci] = self::mutasiPerAkun($kolom['dari'], $kolom['sampai']);
-        }
+        $kolomKunci = array_keys($nilaiPerKolom);
+        $akunPerBaris = self::akunPerBaris($barisList, array_keys($akunCakupan), self::leluhurPerAkun());
 
         $galatList = [];
-        $nilaiPerKode = array_fill_keys(array_keys($kolomList), []);
+        $nilaiPerKode = array_fill_keys($kolomKunci, []);
         foreach ($barisList as $indeks => $baris) {
             $barisList[$indeks]['nilai'] = [];
             $barisList[$indeks]['rincian'] = [];
-            foreach ($kolomList as $kunci => $kolom) {
+            foreach ($kolomKunci as $kunci) {
                 $nilai = null;
                 if ($baris['tipe'] === 'A') {
                     $nilai = 0.0;
                     foreach ($akunPerBaris[$baris['kode']] ?? [] as $akunId => $sisi) {
-                        $mutasi = $mutasiPerKolom[$kunci][$akunId] ?? ['debit' => 0.0, 'kredit' => 0.0];
-                        $nilaiAkun = match ($sisi) {
-                            'D' => $mutasi['debit'],
-                            'K' => $mutasi['kredit'],
-                            default => $mutasi['debit'] - $mutasi['kredit'],
-                        } * (int) $baris['tanda'];
+                        $nilaiAkun = (float) ($nilaiPerKolom[$kunci][$akunId][$sisi] ?? 0) * (int) $baris['tanda'];
                         $nilai += $nilaiAkun;
-                        if ($nilaiAkun != 0.0 || $kunci === 'bulan') {
-                            $barisList[$indeks]['rincian'][$akunId]['nama'] = $akunLabaRugi[$akunId] ?? $akunId;
-                            $barisList[$indeks]['rincian'][$akunId][$kunci] = round($nilaiAkun, 2);
-                        }
+                        $barisList[$indeks]['rincian'][$akunId]['nama'] = $akunCakupan[$akunId] ?? $akunId;
+                        $barisList[$indeks]['rincian'][$akunId][$kunci] = round($nilaiAkun, 2);
                     }
                     $nilai = round($nilai, 2);
                 }
@@ -190,41 +170,169 @@ class LaporanKeuangan
                 }
                 $barisList[$indeks]['nilai'][$kunci] = $nilai;
             }
-            // Rincian: buang akun tanpa nilai di kedua kolom
-            $barisList[$indeks]['rincian'] = array_filter($barisList[$indeks]['rincian'],
-                fn (array $rincian) => ($rincian['bulan'] ?? 0) != 0.0 || ($rincian['ytd'] ?? 0) != 0.0);
+            // Rincian: hanya akun yang bernilai di salah satu kolom
+            $barisList[$indeks]['rincian'] = array_filter($barisList[$indeks]['rincian'], function (array $rincian) use ($kolomKunci) {
+                foreach ($kolomKunci as $kunci) {
+                    if (($rincian[$kunci] ?? 0) != 0.0) {
+                        return true;
+                    }
+                }
+                return false;
+            });
         }
 
-        // Pemeriksaan cakupan & kecocokan
         $hitunganAkun = [];
         foreach ($akunPerBaris as $anggota) {
             foreach (array_keys($anggota) as $akunId) {
                 $hitunganAkun[$akunId] = ($hitunganAkun[$akunId] ?? 0) + 1;
             }
         }
-        $yatimList = array_values(array_diff(array_keys($akunLabaRugi), array_keys($hitunganAkun)));
-        $dobelList = array_keys(array_filter($hitunganAkun, fn (int $jumlah) => $jumlah > 1));
-        $labaBersihAkun = [];
-        foreach ($kolomList as $kunci => $kolom) {
-            $labaBersihAkun[$kunci] = round(array_sum(array_map(
-                fn (string $akunId) => ($mutasiPerKolom[$kunci][$akunId]['kredit'] ?? 0) - ($mutasiPerKolom[$kunci][$akunId]['debit'] ?? 0),
-                array_keys($akunLabaRugi)
-            )), 2);
+        $yatimList = array_values(array_diff(array_keys($akunCakupan), array_keys($hitunganAkun)));
+        $bernilai = function (string $akunId) use ($nilaiPerKolom, $kolomKunci): bool {
+            foreach ($kolomKunci as $kunci) {
+                foreach ($nilaiPerKolom[$kunci][$akunId] ?? [] as $nilai) {
+                    if ((float) $nilai != 0.0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+
+        return [
+            'baris' => $barisList,
+            'galat' => array_keys($galatList),
+            'yatim' => array_map(fn (string $akunId) => ['akun_id' => $akunId, 'nama' => $akunCakupan[$akunId], 'bernilai' => $bernilai($akunId)], $yatimList),
+            'dobel' => array_keys(array_filter($hitunganAkun, fn (int $jumlah) => $jumlah > 1)),
+        ];
+    }
+
+    /** Akun Detail per jenis laporan (N / L / semua) — id => nama. */
+    public static function akunDetail(?string $jenisLaporan = null): array
+    {
+        return DB::table('sikeumst_akuns as a')->join('sikeumst_akun_kelompoks as k', 'k.kelompok_id', '=', 'a.kelompok_id')
+            ->where('a.tipe', 'D')->when($jenisLaporan !== null, fn ($query) => $query->where('k.jenis_laporan', $jenisLaporan))
+            ->orderBy('a.akun_id')->pluck('a.nama', 'a.akun_id')->all();
+    }
+
+    /**
+     * Laporan Laba Rugi untuk satu periode: kolom bulan berjalan & Januari s/d periode.
+     * @return array{template: ?object, baris: array, kolom: array, pemeriksaan: array}
+     */
+    public static function labaRugi(string $periode): array
+    {
+        $template = self::template(self::JENIS_LABARUGI);
+        if (!$template) {
+            return ['template' => null, 'baris' => [], 'kolom' => [], 'pemeriksaan' => ['galat' => ['Template Laba Rugi belum ada — jalankan database/sql/05_template_laporan.sql.']]];
         }
-        $barisTerakhirR = collect($barisList)->where('tipe', 'R')->last();
+        $kolomList = [
+            'bulan' => ['judul' => SnapshotJurnal::labelPeriode($periode), 'dari' => $periode, 'sampai' => $periode],
+            'ytd' => ['judul' => '01 s/d ' . SnapshotJurnal::labelPeriode($periode), 'dari' => substr($periode, 0, 4) . '01', 'sampai' => $periode],
+        ];
+        $akunLabaRugi = self::akunDetail('L');
+
+        $nilaiPerKolom = [];
+        foreach ($kolomList as $kunci => $kolom) {
+            $nilaiPerKolom[$kunci] = [];
+            foreach (self::mutasiPerAkun($kolom['dari'], $kolom['sampai']) as $akunId => $mutasi) {
+                $bersih = round($mutasi['debit'] - $mutasi['kredit'], 2);
+                $nilaiPerKolom[$kunci][$akunId] = ['D' => $mutasi['debit'], 'K' => $mutasi['kredit'], 'M' => $bersih, 'S' => $bersih];
+            }
+        }
+        $hasil = self::hitungTemplate(self::barisTemplate((int) $template->lap_id), $akunLabaRugi, $nilaiPerKolom);
+
+        $labaBersihAkun = [];
+        foreach (array_keys($kolomList) as $kunci) {
+            $labaBersihAkun[$kunci] = round(-array_sum(array_map(
+                fn (string $akunId) => $nilaiPerKolom[$kunci][$akunId]['M'] ?? 0, array_keys($akunLabaRugi))), 2);
+        }
+        $barisTerakhirR = collect($hasil['baris'])->where('tipe', 'R')->last();
 
         return [
             'template' => $template,
-            'baris' => $barisList,
+            'baris' => $hasil['baris'],
             'kolom' => $kolomList,
             'pemeriksaan' => [
-                'galat' => array_keys($galatList),
-                'yatim' => array_map(fn (string $akunId) => ['akun_id' => $akunId, 'nama' => $akunLabaRugi[$akunId],
-                    'bernilai' => ($mutasiPerKolom['ytd'][$akunId] ?? null) !== null], $yatimList),
-                'dobel' => $dobelList,
+                'galat' => $hasil['galat'],
+                'yatim' => $hasil['yatim'],
+                'dobel' => $hasil['dobel'],
                 'laba_bersih_akun' => $labaBersihAkun,
                 'laba_bersih_laporan' => $barisTerakhirR ? $barisTerakhirR['nilai'] : [],
                 'kode_laba_bersih' => $barisTerakhirR['kode'] ?? null,
+            ],
+        ];
+    }
+
+    /**
+     * Saldo akhir bertanda (+ debit / − kredit) per akun Detail pada akhir periode, dari Neraca Saldo
+     * (akun Laba Rugi = sejak Januari). Laba tahun lalu yang belum ditutup buku dimasukkan ke akun laba ditahan.
+     * @return array{saldo: array<string, float>, laba_tahun_lalu: float}
+     */
+    public static function saldoAkhirPerAkun(string $periode, bool $hanyaSaldoAwal = false): array
+    {
+        $neracaSaldo = (new BukuBesar())->neracaSaldo($periode);
+        $saldoList = [];
+        foreach ($neracaSaldo['akun'] as $akun) {
+            $saldoList[$akun['akun_id']] = $hanyaSaldoAwal ? $akun['awal'] : $akun['akhir'];
+        }
+        $akunDitahan = Pengaturan::ambil('akun.laba_ditahan');
+        if ($neracaSaldo['laba_tahun_lalu'] != 0.0 && $akunDitahan !== '') {
+            $saldoList[$akunDitahan] = round(($saldoList[$akunDitahan] ?? 0) - $neracaSaldo['laba_tahun_lalu'], 2);
+        }
+
+        return ['saldo' => $saldoList, 'laba_tahun_lalu' => $neracaSaldo['laba_tahun_lalu']];
+    }
+
+    /**
+     * Neraca (Laporan Posisi Keuangan) per akhir periode, pembanding = 1 Januari tahun itu (saldo awal sah).
+     * @return array{template: ?object, baris: array, kolom: array, pemeriksaan: array}
+     */
+    public static function neraca(string $periode): array
+    {
+        $template = self::template(self::JENIS_NERACA);
+        if (!$template) {
+            return ['template' => null, 'baris' => [], 'kolom' => [], 'pemeriksaan' => ['galat' => ['Template Neraca belum ada — jalankan database/sql/07_template_neraca.sql.']]];
+        }
+        $periodeAwal = substr($periode, 0, 4) . '01';
+        $kolomList = [
+            'akhir' => ['judul' => 'Akhir ' . SnapshotJurnal::labelPeriode($periode)],
+            'awal' => ['judul' => '1 Januari ' . substr($periode, 0, 4)],
+        ];
+        $sumberSaldo = ['akhir' => self::saldoAkhirPerAkun($periode), 'awal' => self::saldoAkhirPerAkun($periodeAwal, true)];
+
+        $nilaiPerKolom = [];
+        foreach ($sumberSaldo as $kunci => $hasilSaldo) {
+            $nilaiPerKolom[$kunci] = [];
+            foreach ($hasilSaldo['saldo'] as $akunId => $saldo) {
+                $nilaiPerKolom[$kunci][$akunId] = ['S' => $saldo, 'M' => $saldo, 'D' => max($saldo, 0), 'K' => max(-$saldo, 0)];
+            }
+        }
+        // Neraca menampung SEMUA akun Detail: akun Neraca lewat baris aset/liabilitas/ekuitas, akun Laba Rugi lewat laba berjalan
+        $hasil = self::hitungTemplate(self::barisTemplate((int) $template->lap_id), self::akunDetail(), $nilaiPerKolom);
+
+        // Pemeriksaan: Σ saldo semua akun = 0 (D = K) dan baris aset = baris liabilitas + ekuitas
+        $barisPerKode = collect($hasil['baris'])->keyBy('kode');
+        $selisih = [];
+        foreach (array_keys($kolomList) as $kunci) {
+            $totalAset = $barisPerKode['TA']['nilai'][$kunci] ?? null;
+            $totalPasiva = $barisPerKode['TLE']['nilai'][$kunci] ?? null;
+            $selisih[$kunci] = [
+                'aset' => $totalAset, 'pasiva' => $totalPasiva,
+                'selisih_laporan' => ($totalAset !== null && $totalPasiva !== null) ? round($totalAset - $totalPasiva, 2) : null,
+                'selisih_buku' => round(array_sum($sumberSaldo[$kunci]['saldo']), 2),
+            ];
+        }
+
+        return [
+            'template' => $template,
+            'baris' => $hasil['baris'],
+            'kolom' => $kolomList,
+            'pemeriksaan' => [
+                'galat' => $hasil['galat'],
+                'yatim' => $hasil['yatim'],
+                'dobel' => $hasil['dobel'],
+                'seimbang' => $selisih,
+                'laba_tahun_lalu' => $sumberSaldo['akhir']['laba_tahun_lalu'],
             ],
         ];
     }

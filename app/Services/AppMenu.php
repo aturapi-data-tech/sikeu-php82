@@ -88,7 +88,11 @@ class AppMenu
             $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 3, 'route' => 'buku-besar.buku-besar', 'title' => 'Buku Besar', 'desc' => 'Mutasi & saldo berjalan per akun, rinci sampai transaksi SIRUS', 'izin' => 'laporan.lihat', 'badge' => 'BB']),
 
             // ── Laporan ────────────────────────────────────────────────
+            $entry(['group' => 'Laporan', 'groupOrder' => 3, 'order' => 2, 'route' => 'laporan.neraca', 'title' => 'Neraca', 'desc' => 'Laporan posisi keuangan per akhir bulan vs 1 Januari — cek Aset = Liabilitas + Ekuitas', 'izin' => 'laporan.lihat', 'badge' => 'NRC']),
             $entry(['group' => 'Laporan', 'groupOrder' => 3, 'order' => 1, 'route' => 'laporan.laba-rugi', 'title' => 'Laba Rugi', 'desc' => 'Laporan laba rugi bulan berjalan & kumulatif — susunan dari template laporan', 'izin' => 'laporan.lihat', 'badge' => 'L/R']),
+
+            // ── Panduan ────────────────────────────────────────────────
+            $entry(['group' => 'Panduan', 'groupOrder' => 90, 'order' => 1, 'route' => 'panduan.istilah-keuangan', 'title' => 'Istilah Keuangan', 'desc' => 'Glosarium: debit/kredit, aset, liabilitas, ekuitas, laba rugi, akrual, istilah SIKEU — dengan contoh rumah sakit', 'izin' => null, 'badge' => '?']),
 
             // ── Sistem ─────────────────────────────────────────────────
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 0, 'route' => 'sistem.identitas', 'title' => 'Identitas Instansi', 'desc' => 'Logo, nama & profil instansi (kop cetakan, halaman depan)', 'izin' => 'sistem.kelola', 'badge' => 'ID']),

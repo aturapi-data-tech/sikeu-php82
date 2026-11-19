@@ -34,6 +34,13 @@ class BukuBesar
 
     public const ALASAN_MIN = 10;
 
+    /** Awalan nama transaksi SIRUS (teks sebelum "(", mis. "OBAT RJ", "BAYAR_RJ") — dipakai SQL_KETERANGAN. */
+    private const SQL_AWALAN = "TRIM(SUBSTR(d.txn_name, 1, INSTR(d.txn_name || '(', '(') - 1))";
+
+    /** Keterangan baris jurnal SIRUS: "OBAT RJ (12 trx)" / "CI Bayar listrik dkk (3 trx)". Dipakai di GROUP BY snapshot. */
+    private const SQL_KETERANGAN = "SUBSTR(CASE WHEN MIN(" . self::SQL_AWALAN . ") = MAX(" . self::SQL_AWALAN . ") THEN MIN(" . self::SQL_AWALAN . ")"
+        . " ELSE MIN(" . self::SQL_AWALAN . ") || ' dkk' END || ' (' || COUNT(*) || ' trx)', 1, 500)";
+
     // ─── Tahun buku & periode ────────────────────────────────────────────────
 
     /** Buat tahun buku + 12 periode berstatus Buka (yang sudah ada dibiarkan). */
@@ -189,9 +196,10 @@ class BukuBesar
                 foreach (['txn_d' => ['debit', 'kredit'], 'txn_k' => ['kredit', 'debit']] as $kolomSirus => [$kolomIsi, $kolomNol]) {
                     $urutTerakhir = (int) DB::table('sikeutxn_jurnal_dtls')->where('jurnal_id', $jurnalId)->count();
                     DB::insert(
-                        "INSERT INTO sikeutxn_jurnal_dtls (jurnal_id, urut, akun_id, akun_lawan_id, {$kolomIsi}, {$kolomNol}, cabang_kunci)
-                         SELECT ?, ? + ROWNUM, akun_id, akun_lawan_id, nilai, 0, cabang_kunci FROM (
-                            SELECT pa.akun_id, pl.akun_id AS akun_lawan_id, d.cabang_kunci, SUM(d.{$kolomSirus}) AS nilai
+                        "INSERT INTO sikeutxn_jurnal_dtls (jurnal_id, urut, akun_id, akun_lawan_id, {$kolomIsi}, {$kolomNol}, cabang_kunci, keterangan)
+                         SELECT ?, ? + ROWNUM, akun_id, akun_lawan_id, nilai, 0, cabang_kunci, keterangan FROM (
+                            SELECT pa.akun_id, pl.akun_id AS akun_lawan_id, d.cabang_kunci, SUM(d.{$kolomSirus}) AS nilai,
+                                   " . self::SQL_KETERANGAN . " AS keterangan
                               FROM sikeutxn_snap_dtls d
                               JOIN sikeumst_peta_akun_sirus pa ON pa.acc_id_sirus = d.txn_acc
                               JOIN sikeumst_peta_akun_sirus pl ON pl.acc_id_sirus = d.txn_acc_k
@@ -229,6 +237,46 @@ class BukuBesar
 
             return ['jurnal' => $jumlahJurnal, 'baris' => $jumlahBaris, 'debit' => $totalDebit, 'kredit' => $totalKredit, 'dibatalkan' => $dibatalkan];
         });
+    }
+
+    /**
+     * Isi keterangan baris jurnal SIRUS yang masih kosong (posting sebelum keterangan diisi otomatis) dari snapshotnya.
+     * @return int jumlah baris yang diisi
+     */
+    public function isiKeteranganSirus(string $periode): int
+    {
+        $jumlah = 0;
+        $jurnalList = DB::table('sikeutxn_jurnal_hdrs')->where('periode', $periode)->where('sumber', self::SUMBER_SIRUS)
+            ->where('status', 'P')->get(['jurnal_id', 'referensi_id', 'tanggal']);
+        foreach ($jurnalList as $jurnal) {
+            $tanggal = substr((string) $jurnal->tanggal, 0, 10);
+            foreach (['debit' => 'txn_d', 'kredit' => 'txn_k'] as $kolomJurnal => $kolomSirus) {
+                $jumlah += DB::update(
+                    "UPDATE sikeutxn_jurnal_dtls j SET keterangan = (
+                        SELECT " . self::SQL_KETERANGAN . "
+                          FROM sikeutxn_snap_dtls d
+                          JOIN sikeumst_peta_akun_sirus pa ON pa.acc_id_sirus = d.txn_acc
+                          JOIN sikeumst_peta_akun_sirus pl ON pl.acc_id_sirus = d.txn_acc_k
+                         WHERE d.snap_id = ? AND d.cabang_kunci = j.cabang_kunci AND pa.akun_id = j.akun_id AND pl.akun_id = j.akun_lawan_id
+                           AND d.{$kolomSirus} > 0
+                           AND d.txn_date >= TO_DATE(?, 'YYYY-MM-DD') AND d.txn_date < TO_DATE(?, 'YYYY-MM-DD') + 1)
+                     WHERE j.jurnal_id = ? AND j.keterangan IS NULL AND j.{$kolomJurnal} > 0",
+                    [(int) $jurnal->referensi_id, $tanggal, $tanggal, $jurnal->jurnal_id]
+                );
+            }
+        }
+
+        return $jumlah;
+    }
+
+    /** Label cabang SIRUS yang bisa dibaca: literal pertama ekspresi label ('BAYAR_RJ (' || ... → "BAYAR_RJ"). */
+    public static function labelCabangBaca(?string $labelCabang): string
+    {
+        if ($labelCabang !== null && preg_match("/^'([^']*)'/", trim($labelCabang), $cocok)) {
+            return trim($cocok[1], " (");
+        }
+
+        return '';
     }
 
     // ─── Kunci periode ───────────────────────────────────────────────────────
@@ -380,7 +428,7 @@ class BukuBesar
 
         $rows = DB::select(
             "SELECT h.jurnal_id, h.no_jurnal, h.tanggal, h.sumber, h.referensi_id, d.akun_lawan_id, l.nama AS nama_lawan, d.cabang_kunci,
-                    MAX(c.label_cabang) AS label_cabang, SUM(d.debit) AS debit, SUM(d.kredit) AS kredit
+                    MAX(c.label_cabang) AS label_cabang, MAX(d.keterangan) AS keterangan, SUM(d.debit) AS debit, SUM(d.kredit) AS kredit
                FROM sikeutxn_jurnal_dtls d
                JOIN sikeutxn_jurnal_hdrs h ON h.jurnal_id = d.jurnal_id
                LEFT JOIN sikeumst_akuns l ON l.akun_id = d.akun_lawan_id

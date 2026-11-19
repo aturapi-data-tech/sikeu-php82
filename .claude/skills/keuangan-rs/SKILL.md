@@ -12,6 +12,9 @@ ke KAP** — SIKEU menyediakan tempat dan angkanya.
 
 Urutan prioritas: permintaan user → skill ini → `CLAUDE.md` SIKEU → skill teknis (`oracle-quirks`, `sikeu-ui-ux`).
 
+Glosarium untuk pemakai (istilah + contoh RS) ada di layar **Panduan › Istilah Keuangan**, isinya di
+`App\Support\GlosariumKeuangan` — istilah baru di laporan/layar ikut ditambahkan di sana.
+
 ---
 
 ## 1. Standar
@@ -25,8 +28,8 @@ Urutan prioritas: permintaan user → skill ini → `CLAUDE.md` SIKEU → skill 
 | Penyusutan fiskal | PMK 96/PMK.03/2009 (kelompok 1–4, bangunan) | **Fiskal ≠ komersial** — lihat §4.6 |
 | Pesangon | PP 35/2021 | Liabilitas imbalan pascakerja `2.2.02.001` |
 
-Status badan hukum RS ini belum pasti (dokumen akreditasi menyebut "Yayasan RSUI Madinah" dan "PT. Madinah Al…").
-**Tanyakan user sebelum membuat Laporan Perubahan Ekuitas / Aset Neto.**
+**Badan hukum RS ini = PT (dikonfirmasi user 2026-11-19)** → SAK EP penuh, ekuitas = modal + saldo laba, laporan
+pendamping = Laporan Perubahan Ekuitas (bukan Aset Neto).
 
 ---
 
@@ -34,7 +37,7 @@ Status badan hukum RS ini belum pasti (dokumen akreditasi menyebut "Yayasan RSUI
 
 | # | Laporan | Sumber angka di SIKEU | Status |
 |---|---|---|---|
-| 1 | Laporan Posisi Keuangan (Neraca) | saldo akhir akun kelompok N (`jenis_laporan='N'`) + laba berjalan | BELUM (butuh saldo awal) |
+| 1 | Laporan Posisi Keuangan (Neraca) | saldo akhir akun kelompok N (`jenis_laporan='N'`) + laba berjalan | **ADA** — `LaporanKeuangan::neraca`, layar Laporan › Neraca, template DDL 07 (kode baris `TA` & `TLE` dipakai cek Aset = Liabilitas + Ekuitas) |
 | 2 | Laporan Laba Rugi (dan Penghasilan Komprehensif Lain) | mutasi akun kelompok L periode & YTD | **ADA** — `LaporanKeuangan::labaRugi`, layar Laporan › Laba Rugi, template DDL 05 |
 | 3 | Laporan Perubahan Ekuitas (yayasan: Perubahan Aset Neto) | saldo awal ekuitas + laba bersih + setoran/dividen | BELUM — **template belum ada di `sikeumst_lap_hdrs`** |
 | 4 | Laporan Arus Kas | metode langsung: baris jurnal akun kas × `akun_lawan_id` × `kategori_arus_kas` lawan | BELUM (struktur siap) |
@@ -158,7 +161,7 @@ Kode: `SnapshotJurnal`, `BukuBesar`, `BaganAkun`, `FormatKodeAkun`. Detail tekni
 |---|---|---|
 | 1 | ~~Laporan Laba Rugi~~ SELESAI; sisa: **form Susunan Laporan** (ubah baris template tanpa SQL) | universal |
 | 2 | ~~Saldo awal~~ SELESAI (`App\Support\SaldoAwal`, layar Buku Besar › Saldo Awal, API SIRUS `/saldo-awal/{tahun}`) | syarat Neraca |
-| 3 | **Neraca** + **Laporan Perubahan Ekuitas/Aset Neto** (tambah template ke `sikeumst_lap_hdrs`) | set laporan SAK EP |
+| 3 | ~~Neraca~~ SELESAI; sisa **Laporan Perubahan Ekuitas** (PT; jenis baru di `sikeumst_lap_hdrs`) | set laporan SAK EP |
 | 4 | **Jurnal Umum / Penyesuaian** (MANUAL, D/K bebas, wajib seimbang, periode Buka, `jurnal.entri`) | tempat semua koreksi §5.6 |
 | 5 | **Arus Kas** metode langsung (kas × lawan × kategori) + tidak langsung | set laporan |
 | 6 | API SIRUS **klaim BPJS** + **RI berjalan** → penyesuaian otomatis §4.1–4.2 | celah terbesar di angka pendapatan & piutang |

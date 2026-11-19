@@ -100,7 +100,7 @@ new class extends Component {
         }
         $this->rincianKunci = [
             'jurnal_id' => (int) $baris['jurnal_id'], 'akun_lawan_id' => (string) $baris['akun_lawan_id'],
-            'cabang_kunci' => (string) $baris['cabang_kunci'], 'judul' => $baris['label_cabang'] ?? '', 'no_jurnal' => $baris['no_jurnal'],
+            'cabang_kunci' => (string) $baris['cabang_kunci'], 'judul' => $this->keteranganBaris($baris), 'no_jurnal' => $baris['no_jurnal'],
         ];
         $this->dispatch('open-modal', name: 'rincian-sirus');
     }
@@ -119,6 +119,12 @@ new class extends Component {
     {
         $this->rincianKunci = [];
         $this->dispatch('close-modal', name: 'rincian-sirus');
+    }
+
+    /** Keterangan baris: isian posting ("OBAT RJ (12 trx)"), atau label cabang yang bisa dibaca, atau sumber jurnal. */
+    public function keteranganBaris(array $baris): string
+    {
+        return (string) ($baris['keterangan'] ?: BukuBesar::labelCabangBaca($baris['label_cabang'] ?? null) ?: $baris['sumber']);
     }
 
     /** Saldo bertanda → teks "1.234,00 D" / "1.234,00 K". */
@@ -214,7 +220,7 @@ new class extends Component {
                                     <tr wire:key="mutasi-{{ $indeks }}-{{ $baris['jurnal_id'] }}-{{ $baris['cabang_kunci'] }}-{{ $baris['akun_lawan_id'] }}">
                                         <td class="whitespace-nowrap">{{ Format::tanggal($baris['tanggal']) }}</td>
                                         <td class="ds-td-meta">{{ $baris['no_jurnal'] }}</td>
-                                        <td class="text-xs text-body dark:text-gray-300">{{ $baris['label_cabang'] ?: $baris['sumber'] }}</td>
+                                        <td class="text-xs text-body dark:text-gray-300">{{ $this->keteranganBaris($baris) }}</td>
                                         <td class="text-xs"><span class="font-mono">{{ $baris['akun_lawan_id'] }}</span> {{ $baris['nama_lawan'] }}</td>
                                         <td class="text-right tabular-nums">{{ (float) $baris['debit'] != 0 ? Format::uang($baris['debit']) : '' }}</td>
                                         <td class="text-right tabular-nums">{{ (float) $baris['kredit'] != 0 ? Format::uang($baris['kredit']) : '' }}</td>

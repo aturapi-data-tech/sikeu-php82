@@ -36,12 +36,18 @@ Route::middleware(['auth', 'menu'])->group(function () {
     // ── LAPORAN ──
     Route::livewire('/laporan/laba-rugi', 'pages::laporan.laba-rugi.laba-rugi')
         ->name('laporan.laba-rugi');
+    Route::livewire('/laporan/neraca', 'pages::laporan.neraca.neraca')
+        ->name('laporan.neraca');
 
     // ── CUTOFF JURNAL ──
     Route::livewire('/cutoff/snapshot-jurnal', 'pages::cutoff.snapshot-jurnal.snapshot-jurnal')
         ->name('cutoff.snapshot-jurnal');
     Route::livewire('/cutoff/banding-versi', 'pages::cutoff.banding-versi.banding-versi')
         ->name('cutoff.banding-versi');
+
+    // ── PANDUAN ──
+    Route::livewire('/panduan/istilah-keuangan', 'pages::panduan.istilah-keuangan.istilah-keuangan')
+        ->name('panduan.istilah-keuangan');
 
     // ── SISTEM ──
     Route::livewire('/sistem/identitas', 'pages::sistem.identitas-instansi.identitas-instansi')
