@@ -86,6 +86,9 @@ class AppMenu
             $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 2, 'route' => 'buku-besar.neraca-saldo', 'title' => 'Neraca Saldo', 'desc' => 'Saldo awal, mutasi & saldo akhir tiap akun per periode — cek D = K', 'izin' => 'laporan.lihat', 'badge' => 'NS']),
             $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 3, 'route' => 'buku-besar.buku-besar', 'title' => 'Buku Besar', 'desc' => 'Mutasi & saldo berjalan per akun, rinci sampai transaksi SIRUS', 'izin' => 'laporan.lihat', 'badge' => 'BB']),
 
+            // ── Laporan ────────────────────────────────────────────────
+            $entry(['group' => 'Laporan', 'groupOrder' => 3, 'order' => 1, 'route' => 'laporan.laba-rugi', 'title' => 'Laba Rugi', 'desc' => 'Laporan laba rugi bulan berjalan & kumulatif — susunan dari template laporan', 'izin' => 'laporan.lihat', 'badge' => 'L/R']),
+
             // ── Sistem ─────────────────────────────────────────────────
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 0, 'route' => 'sistem.identitas', 'title' => 'Identitas Instansi', 'desc' => 'Logo, nama & profil instansi (kop cetakan, halaman depan)', 'izin' => 'sistem.kelola', 'badge' => 'ID']),
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 1, 'route' => 'sistem.user-control', 'title' => 'User Control', 'desc' => 'Kelola user login, role & tanda tangan', 'izin' => 'sistem.kelola', 'badge' => 'USR']),

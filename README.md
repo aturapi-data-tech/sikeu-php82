@@ -85,6 +85,7 @@ Database (sekali):
    Keduanya dibuat oleh `database/sql/tools/bagan_akun.php`: ubah bagan/peta di sana, jalankan ulang generatornya.
 
 6. `database/sql/04_pengaturan.sql` — tabel pengaturan (format kode akun: tingkat, digit, pemisah, nomor kontra).
+7. `database/sql/05_template_laporan.sql` — susunan baris Laba Rugi (SAK EP rumah sakit) sebagai data template.
 Di **SIRUS**: isi `SIKEU_API_JWT_SECRET` (≥ 32 karakter acak) di `.env`, lalu `php artisan sikeu-api:akun`
 → salin username & password yang dicetak ke `.env` SIKEU.
 

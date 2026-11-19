@@ -35,7 +35,7 @@ Status badan hukum RS ini belum pasti (dokumen akreditasi menyebut "Yayasan RSUI
 | # | Laporan | Sumber angka di SIKEU | Status |
 |---|---|---|---|
 | 1 | Laporan Posisi Keuangan (Neraca) | saldo akhir akun kelompok N (`jenis_laporan='N'`) + laba berjalan | BELUM (butuh saldo awal) |
-| 2 | Laporan Laba Rugi (dan Penghasilan Komprehensif Lain) | mutasi akun kelompok L periode & YTD | BELUM |
+| 2 | Laporan Laba Rugi (dan Penghasilan Komprehensif Lain) | mutasi akun kelompok L periode & YTD | **ADA** — `LaporanKeuangan::labaRugi`, layar Laporan › Laba Rugi, template DDL 05 |
 | 3 | Laporan Perubahan Ekuitas (yayasan: Perubahan Aset Neto) | saldo awal ekuitas + laba bersih + setoran/dividen | BELUM — **template belum ada di `sikeumst_lap_hdrs`** |
 | 4 | Laporan Arus Kas | metode langsung: baris jurnal akun kas × `akun_lawan_id` × `kategori_arus_kas` lawan | BELUM (struktur siap) |
 | 5 | Catatan atas Laporan Keuangan (CALK) | kebijakan akuntansi + rincian pos (aging piutang, aset tetap, persediaan) | BELUM — teks di pengaturan + tabel rincian |
@@ -156,7 +156,7 @@ Kode: `SnapshotJurnal`, `BukuBesar`, `BaganAkun`, `FormatKodeAkun`. Detail tekni
 
 | Prioritas | Butuh | Alasan |
 |---|---|---|
-| 1 | **Laporan Laba Rugi** (template + layar, bulan & YTD, rincian per baris) | tidak butuh saldo awal; langsung berguna |
+| 1 | ~~Laporan Laba Rugi~~ SELESAI; sisa: **form Susunan Laporan** (ubah baris template tanpa SQL) | universal |
 | 2 | **Saldo awal** dari SIRUS `tktxn_saldoawalakuns` via API + koreksi manual + jurnal SALDO_AWAL | syarat Neraca |
 | 3 | **Neraca** + **Laporan Perubahan Ekuitas/Aset Neto** (tambah template ke `sikeumst_lap_hdrs`) | set laporan SAK EP |
 | 4 | **Jurnal Umum / Penyesuaian** (MANUAL, D/K bebas, wajib seimbang, periode Buka, `jurnal.entri`) | tempat semua koreksi §5.6 |

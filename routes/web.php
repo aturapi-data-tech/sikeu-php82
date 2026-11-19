@@ -31,6 +31,10 @@ Route::middleware(['auth', 'menu'])->group(function () {
     Route::livewire('/buku-besar/buku-besar', 'pages::buku-besar.buku-besar.buku-besar')
         ->name('buku-besar.buku-besar');
 
+    // ── LAPORAN ──
+    Route::livewire('/laporan/laba-rugi', 'pages::laporan.laba-rugi.laba-rugi')
+        ->name('laporan.laba-rugi');
+
     // ── CUTOFF JURNAL ──
     Route::livewire('/cutoff/snapshot-jurnal', 'pages::cutoff.snapshot-jurnal.snapshot-jurnal')
         ->name('cutoff.snapshot-jurnal');

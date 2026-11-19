@@ -59,6 +59,14 @@ new class extends Component {
         return DB::table('sikeumst_periodes')->orderByDesc('periode')->pluck('periode')->map(fn ($periode) => (string) $periode)->all();
     }
 
+    /** Ada periode terposting di rentang? — untuk membedakan "belum diposting" dari "memang tak ada mutasi". */
+    #[Computed]
+    public function adaPosting(): bool
+    {
+        return DB::table('sikeumst_periodes')->whereNotNull('snap_id_sah')
+            ->where('periode', '>=', $this->periodeDari)->where('periode', '<=', $this->periodeSampai)->exists();
+    }
+
     #[Computed]
     public function akun(): ?object
     {
@@ -220,7 +228,16 @@ new class extends Component {
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="8" class="px-6 py-8 text-center text-muted dark:text-gray-400">Tidak ada mutasi di rentang ini.</td></tr>
+                                    <tr>
+                                        <td colspan="8" class="px-6 py-8 text-center text-muted dark:text-gray-400">
+                                            @if (!$this->adaPosting)
+                                                Belum ada periode yang diposting di rentang ini — buku besar hanya membaca jurnal yang sudah disahkan.
+                                                <a href="{{ route('buku-besar.periode', ['tahun' => substr($periodeDari, 0, 4)]) }}" wire:navigate class="font-medium underline">Sahkan & posting di Periode & Posting</a>.
+                                            @else
+                                                Tidak ada mutasi akun ini di rentang yang sudah diposting.
+                                            @endif
+                                        </td>
+                                    </tr>
                                 @endforelse
                             </tbody>
                             @if ($this->mutasi['baris'] !== [])
