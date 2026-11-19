@@ -112,6 +112,21 @@ new class extends Component {
         return $periode !== null ? (string) $periode : null;
     }
 
+    /** Alasan bulan lain belum bisa dikunci (dipakai tombol Kunci nonaktif). */
+    #[Computed]
+    public function alasanBelumGiliranKunci(): ?string
+    {
+        if ($this->periodeBolehKunci === null) {
+            return null;
+        }
+        $sudahDiposting = DB::table('sikeumst_periodes')->where('periode', $this->periodeBolehKunci)->whereNotNull('snap_id_sah')->exists();
+        $label = SnapshotJurnal::labelPeriode($this->periodeBolehKunci);
+
+        return $sudahDiposting
+            ? "Kunci berurutan dari bulan terlama — kunci {$label} dulu."
+            : "Kunci berurutan dari bulan terlama — {$label} belum diposting.";
+    }
+
     /** Bulan yang boleh dibuka kuncinya: periode Kunci terbaru. */
     #[Computed]
     public function periodeBolehBukaKunci(): ?string
@@ -129,7 +144,7 @@ new class extends Component {
 
     private function segarkan(): void
     {
-        unset($this->periodeList, $this->tahunAda, $this->periodeBelumDiposting, $this->kemajuanProses, $this->periodeBolehKunci, $this->periodeBolehBukaKunci);
+        unset($this->periodeList, $this->tahunAda, $this->periodeBelumDiposting, $this->kemajuanProses, $this->periodeBolehKunci, $this->periodeBolehBukaKunci, $this->alasanBelumGiliranKunci);
     }
 
     // ─── Ambil snapshot & Proses Setahun ──────────────────────────────────────
@@ -557,6 +572,15 @@ new class extends Component {
                                                     <x-ikon nama="lihat" /> Neraca Saldo
                                                 </x-outline-button>
                                             @endif
+                                            @if ($row['status'] === 'B' && $row['versi_sah'] && !$bolehKunci)
+                                                @can('periode.kunci')
+                                                    {{-- Tampil tapi nonaktif + alasan, supaya pemakai tahu kenapa belum bisa dikunci --}}
+                                                    <x-secondary-button type="button" class="px-3 py-1.5 text-sm" disabled
+                                                        title="{{ $this->alasanBelumGiliranKunci }}" aria-describedby="alasan-kunci-{{ $row['periode'] }}">
+                                                        <x-ikon nama="kunci" /> Kunci
+                                                    </x-secondary-button>
+                                                @endcan
+                                            @endif
                                             @if ($bolehKunci)
                                                 @can('periode.kunci')
                                                     <x-confirm-button variant="primary" :action="'kunci(\'' . $row['periode'] . '\')'" class="px-3 py-1.5"
@@ -570,8 +594,23 @@ new class extends Component {
                                                 @can('periode.kunci')
                                                     <x-warning-button type="button" class="px-3 py-1.5 text-sm" wire:click="bukaFormBukaKunci('{{ $row['periode'] }}')"><x-ikon nama="buka-kunci" /> Buka Kunci</x-warning-button>
                                                 @endcan
+                                            @elseif ($row['status'] === 'K')
+                                                @can('periode.kunci')
+                                                    <x-secondary-button type="button" class="px-3 py-1.5 text-sm" disabled
+                                                        title="Buka kunci berurutan dari bulan terbaru — buka {{ SnapshotJurnal::labelPeriode((string) $this->periodeBolehBukaKunci) }} dulu."
+                                                        aria-describedby="alasan-kunci-{{ $row['periode'] }}">
+                                                        <x-ikon nama="buka-kunci" /> Buka Kunci
+                                                    </x-secondary-button>
+                                                @endcan
                                             @endif
                                         </div>
+                                        @can('periode.kunci')
+                                            @if ($row['status'] === 'B' && $row['versi_sah'] && !$bolehKunci)
+                                                <p id="alasan-kunci-{{ $row['periode'] }}" class="mt-1 text-[11px] text-right text-muted dark:text-gray-400">{{ $this->alasanBelumGiliranKunci }}</p>
+                                            @elseif ($row['status'] === 'K' && !$bolehBukaKunci)
+                                                <p id="alasan-kunci-{{ $row['periode'] }}" class="mt-1 text-[11px] text-right text-muted dark:text-gray-400">Buka kunci berurutan dari bulan terbaru — buka {{ SnapshotJurnal::labelPeriode((string) $this->periodeBolehBukaKunci) }} dulu.</p>
+                                            @endif
+                                        @endcan
                                     </td>
                                 </tr>
                             @endforeach
