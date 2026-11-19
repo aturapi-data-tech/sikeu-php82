@@ -265,7 +265,7 @@ new class extends Component {
                     @else
                         <span></span>
                     @endif
-                    <x-secondary-button type="button" wire:click="tutup">Tutup</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="tutup"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                 </div>
             </div>
         </div>

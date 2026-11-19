@@ -51,11 +51,11 @@
                  Halaman publik lain (display TV, dll) tidak butuh tombol Masuk. --}}
             @if (request()->path() === '/')
                 <x-primary-button type="button" onclick="location.href='{{ route('login') }}'">
-                    Masuk
+                    <x-ikon nama="masuk" /> Masuk
                 </x-primary-button>
 
                 <x-secondary-button type="button" x-on:click="$dispatch('open-modal', { name: 'tentang' })">
-                    Bantuan
+                    <x-ikon nama="bantuan" /> Bantuan
                 </x-secondary-button>
             @endif
         </div>

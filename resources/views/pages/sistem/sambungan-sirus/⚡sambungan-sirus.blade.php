@@ -36,7 +36,7 @@ new class extends Component {
 
             <div class="flex items-center gap-3">
                 <x-primary-button type="button" wire:click="periksa" wire:loading.attr="disabled" wire:target="periksa">
-                    <span wire:loading.remove wire:target="periksa">Periksa Sambungan</span>
+                    <span wire:loading.remove wire:target="periksa" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Periksa Sambungan</span>
                     <span wire:loading wire:target="periksa">Memeriksa…</span>
                 </x-primary-button>
                 @if ($waktuPeriksa)
@@ -52,7 +52,13 @@ new class extends Component {
                                 'mt-0.5 inline-flex shrink-0 items-center justify-center w-6 h-6 rounded-full text-xs font-bold',
                                 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' => $hasil['lulus'],
                                 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200' => !$hasil['lulus'],
-                            ]) aria-hidden="true">{{ $hasil['lulus'] ? '✓' : '!' }}</span>
+                            ]) aria-hidden="true">
+                                @if ($hasil['lulus'])
+                                    <x-ikon nama="setujui" ukuran="w-3.5 h-3.5" />
+                                @else
+                                    <x-ikon-peringatan />
+                                @endif
+                            </span>
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-ink dark:text-white">
                                     {{ $hasil['judul'] }}

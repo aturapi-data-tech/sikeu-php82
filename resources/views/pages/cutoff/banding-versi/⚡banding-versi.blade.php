@@ -127,7 +127,7 @@ new class extends Component {
                         </x-select-input>
                     </div>
                 </div>
-                <x-secondary-button type="button" wire:click="tukar" title="Tukar versi lama & baru" aria-label="Tukar versi lama dan baru">⇄</x-secondary-button>
+                <x-secondary-button type="button" wire:click="tukar" title="Tukar versi lama & baru" aria-label="Tukar versi lama dan baru"><x-ikon nama="tukar" /></x-secondary-button>
                 <div>
                     <x-input-label for="pilihBaru" value="Versi baru" />
                     <div class="w-64 mt-1">
@@ -147,7 +147,7 @@ new class extends Component {
             @if ($this->versiList->count() < 2)
                 <div class="p-4 text-sm border rounded-xl border-hairline bg-surface-card text-body dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
                     Periode ini baru punya {{ $this->versiList->count() }} versi selesai. Ambil satu versi lagi di
-                    <a href="{{ route('buku-besar.periode', ['tahun' => substr($periode, 0, 4)]) }}" wire:navigate class="font-semibold underline">Periode &amp; Pengesahan</a> (tombol "+ Ambil versi baru" di baris bulannya) untuk bisa membandingkan.
+                    <a href="{{ route('buku-besar.periode', ['tahun' => substr($periode, 0, 4)]) }}" wire:navigate class="font-semibold underline">Tarik Data SIRUS</a> (tombol "Tarik ulang" di baris bulannya) untuk bisa membandingkan.
                 </div>
             @elseif ($this->hasil === null)
                 <div class="p-4 text-sm border rounded-xl border-hairline bg-surface-card text-body dark:bg-gray-800 dark:border-gray-700">

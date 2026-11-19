@@ -70,12 +70,12 @@ class AppMenu
     {
         return [
             // 'izin' = permission (App\Support\HakAkses::DAFTAR); null = semua user login.
-            // Urutan grup = alur kerja: pembukuan (ambil & sahkan jurnal SIRUS ada di Periode & Pengesahan) -> laporan;
+            // Urutan grup = alur kerja: pembukuan (ambil & sahkan jurnal SIRUS ada di Tarik Data SIRUS) -> laporan;
             // data induk & sistem (jarang dipakai) di bawah. Jangan menambah menu kembar untuk fungsi yang sudah ada.
 
             // ── 1. Pembukuan ───────────────────────────────────────────
-            $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 1, 'route' => 'buku-besar.periode', 'title' => 'Periode & Pengesahan', 'desc' => 'Buka tahun buku, ambil & sahkan jurnal SIRUS ke buku besar, kunci periode', 'izin' => 'laporan.lihat', 'badge' => 'PP']),
-            $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 2, 'route' => 'cutoff.banding-versi', 'title' => 'Bandingkan Versi', 'desc' => 'Cari transaksi SIRUS yang baru, hilang, atau berubah antara dua versi jurnal yang diambil', 'izin' => 'laporan.lihat', 'badge' => 'BV']),
+            $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 1, 'route' => 'buku-besar.periode', 'title' => 'Tarik Data SIRUS', 'desc' => 'Tarik jurnal SIRUS per bulan / setahun, sahkan ke buku besar, kunci periode; buka tahun buku', 'izin' => 'laporan.lihat', 'badge' => 'TDS']),
+            $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 2, 'route' => 'cutoff.banding-versi', 'title' => 'Bandingkan Versi', 'desc' => 'Cari transaksi SIRUS yang baru, hilang, atau berubah antara dua hasil tarikan', 'izin' => 'laporan.lihat', 'badge' => 'BV']),
             $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 3, 'route' => 'buku-besar.saldo-awal', 'title' => 'Saldo Awal', 'desc' => 'Saldo akun per 1 Januari: tarik dari SIRUS, koreksi, seimbangkan, sahkan', 'izin' => 'laporan.lihat', 'badge' => 'SA']),
             $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 4, 'route' => 'buku-besar.jurnal-umum', 'title' => 'Jurnal Umum', 'desc' => 'Jurnal penyesuaian & koreksi: konsep, posting (wajib seimbang), batal / pembalik', 'izin' => 'laporan.lihat', 'badge' => 'JU']),
             $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 5, 'route' => 'buku-besar.neraca-saldo', 'title' => 'Neraca Saldo', 'desc' => 'Saldo awal, mutasi & saldo akhir tiap akun per periode - cek debit = kredit', 'izin' => 'laporan.lihat', 'badge' => 'NS']),

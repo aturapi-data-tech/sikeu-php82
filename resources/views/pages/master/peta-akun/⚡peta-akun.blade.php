@@ -176,7 +176,7 @@ new class extends Component {
                         <x-badge :variant="($jumlah['TUJUAN'] ?? 0) > 0 ? 'danger' : 'gray'">Tujuan {{ $jumlah['TUJUAN'] ?? 0 }}</x-badge>
                         <x-badge :variant="($jumlah['HILANG'] ?? 0) > 0 ? 'warning' : 'gray'">Hilang {{ $jumlah['HILANG'] ?? 0 }}</x-badge>
                         <x-secondary-button type="button" wire:click="muatUlangSirus" wire:loading.attr="disabled" wire:target="muatUlangSirus">
-                            <span wire:loading.remove wire:target="muatUlangSirus">Muat Ulang dari SIRUS</span>
+                            <span wire:loading.remove wire:target="muatUlangSirus" class="inline-flex items-center gap-2"><x-ikon nama="muat-ulang" /> Muat Ulang dari SIRUS</span>
                             <span wire:loading wire:target="muatUlangSirus">Memuat...</span>
                         </x-secondary-button>
                         <x-toolbar-refresh-reset :label="null" />

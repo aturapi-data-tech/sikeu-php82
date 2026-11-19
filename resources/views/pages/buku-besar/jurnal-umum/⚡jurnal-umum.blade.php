@@ -302,7 +302,7 @@ new class extends Component {
                     </div>
                     <div class="flex items-center gap-2">
                         @can('jurnal.entri')
-                            <x-primary-button type="button" wire:click="buatBaru" :disabled="($this->periodeList[$periode] ?? 'B') !== 'B'">+ Jurnal Baru</x-primary-button>
+                            <x-primary-button type="button" wire:click="buatBaru" :disabled="($this->periodeList[$periode] ?? 'B') !== 'B'"><x-ikon nama="tambah" /> Jurnal Baru</x-primary-button>
                         @endcan
                     </div>
                 </div>
@@ -348,11 +348,15 @@ new class extends Component {
                                     <td class="text-xs text-muted dark:text-gray-400">{{ $row->pembuat ?? '-' }}</td>
                                     <td class="ds-c">
                                         <div class="flex flex-wrap justify-end gap-2">
-                                            <x-secondary-button type="button" class="px-2.5 py-1.5 text-sm" wire:click="buka({{ $row->jurnal_id }})">{{ $row->status === 'D' ? 'Ubah' : 'Lihat' }}</x-secondary-button>
+                                            @if ($row->status === 'D' && auth()->user()?->can('jurnal.entri'))
+                                                <x-action-edit wire:click="buka({{ $row->jurnal_id }})" />
+                                            @else
+                                                <x-lihat-button wire:click="buka({{ $row->jurnal_id }})" title="Lihat {{ $row->no_jurnal }}" />
+                                            @endif
                                             @if ($row->status === 'D')
                                                 @can('jurnal.posting')
                                                     <x-confirm-button variant="primary" :action="'posting(' . $row->jurnal_id . ')'" class="px-2.5 py-1.5"
-                                                        title="Posting {{ $row->no_jurnal }}" message="Jurnal masuk buku besar & laporan. Sesudah diposting tidak bisa diubah, hanya dibatalkan / dibalik.">Posting</x-confirm-button>
+                                                        title="Posting {{ $row->no_jurnal }}" message="Jurnal masuk buku besar & laporan. Sesudah diposting tidak bisa diubah, hanya dibatalkan / dibalik."><x-ikon nama="setujui" /> Posting</x-confirm-button>
                                                 @endcan
                                                 @can('jurnal.entri')
                                                     <x-action-delete :action="'hapusDraft(' . $row->jurnal_id . ')'" title="Hapus Draft" message="Hapus draft {{ $row->no_jurnal }}?" />
@@ -360,7 +364,7 @@ new class extends Component {
                                             @endif
                                             @if ($row->status === 'P' && ($this->periodeList[$periode] ?? '') === 'B')
                                                 @can('jurnal.posting')
-                                                    <x-secondary-button type="button" class="px-2.5 py-1.5 text-sm" wire:click="bukaBatal({{ $row->jurnal_id }})">Batalkan</x-secondary-button>
+                                                    <x-secondary-button type="button" class="px-2.5 py-1.5 text-sm" wire:click="bukaBatal({{ $row->jurnal_id }})"><x-ikon nama="batalkan" /> Batalkan</x-secondary-button>
                                                 @endcan
                                             @endif
                                         </div>
@@ -476,7 +480,7 @@ new class extends Component {
                                 <tr class="font-bold bg-surface-card text-ink dark:bg-gray-800 dark:text-gray-100">
                                     <td colspan="2" class="px-3 py-3">
                                         @if (!$bacaSaja)
-                                            <x-secondary-button type="button" wire:click="tambahBaris" class="px-3 py-1.5 text-sm">+ Baris</x-secondary-button>
+                                            <x-secondary-button type="button" wire:click="tambahBaris" class="px-3 py-1.5 text-sm"><x-ikon nama="tambah" /> Tambah Baris</x-secondary-button>
                                         @else
                                             Jumlah
                                         @endif
@@ -502,16 +506,16 @@ new class extends Component {
                 <div class="flex flex-wrap items-center justify-end gap-2">
                     @if ($jurnalId && $formStatus !== 'D')
                         @can('jurnal.entri')
-                            <x-secondary-button type="button" wire:click="salin({{ $jurnalId }})">Salin jadi draft baru</x-secondary-button>
-                            <x-secondary-button type="button" wire:click="salin({{ $jurnalId }}, true)">Salin sebagai pembalik</x-secondary-button>
+                            <x-secondary-button type="button" wire:click="salin({{ $jurnalId }})"><x-ikon nama="salin" /> Salin jadi draft baru</x-secondary-button>
+                            <x-secondary-button type="button" wire:click="salin({{ $jurnalId }}, true)"><x-ikon nama="salin" /> Salin sebagai pembalik</x-secondary-button>
                         @endcan
                     @endif
-                    <x-secondary-button type="button" x-on:click="tryClose()">{{ $bacaSaja ? 'Tutup' : 'Batal' }}</x-secondary-button>
+                    <x-secondary-button type="button" x-on:click="tryClose()"><x-ikon nama="batal" /> {{ $bacaSaja ? 'Tutup' : 'Batal' }}</x-secondary-button>
                     @if (!$bacaSaja)
-                        <x-secondary-button type="button" wire:click="simpan(false)" wire:loading.attr="disabled" wire:target="simpan">Simpan Draft</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="simpan(false)" wire:loading.attr="disabled" wire:target="simpan"><x-ikon nama="simpan" /> Simpan Draft</x-secondary-button>
                         @can('jurnal.posting')
                             <x-primary-button type="button" wire:click="simpan(true)" wire:loading.attr="disabled" wire:target="simpan"
-                                :disabled="$total['selisih'] != 0.0 || $total['debit'] <= 0">Simpan & Posting</x-primary-button>
+                                :disabled="$total['selisih'] != 0.0 || $total['debit'] <= 0"><x-ikon nama="simpan" /> Simpan & Posting</x-primary-button>
                         @endcan
                     @endif
                 </div>
@@ -530,8 +534,8 @@ new class extends Component {
                 <x-input-error :messages="$errors->get('alasanBatal')" class="mt-1" />
             </div>
             <div class="flex justify-end gap-2">
-                <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'batal-jurnal-umum' })">Tutup</x-secondary-button>
-                <x-danger-button type="button" wire:click="batal" wire:loading.attr="disabled" wire:target="batal">Batalkan Jurnal</x-danger-button>
+                <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'batal-jurnal-umum' })"><x-ikon nama="batal" /> Tutup</x-secondary-button>
+                <x-danger-button type="button" wire:click="batal" wire:loading.attr="disabled" wire:target="batal"><x-ikon nama="batalkan" /> Batalkan Jurnal</x-danger-button>
             </div>
         </div>
     </x-modal>

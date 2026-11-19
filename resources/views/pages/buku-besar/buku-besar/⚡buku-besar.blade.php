@@ -229,7 +229,7 @@ new class extends Component {
                                             @if ($baris['sumber'] === 'SIRUS')
                                                 <x-secondary-button type="button" class="px-2.5 py-1 text-xs" wire:click="bukaRincian({{ $indeks }})"
                                                     wire:loading.attr="disabled" wire:target="bukaRincian({{ $indeks }})"
-                                                    aria-label="Rincian transaksi SIRUS {{ $baris['no_jurnal'] }}">SIRUS</x-secondary-button>
+                                                    aria-label="Rincian transaksi SIRUS {{ $baris['no_jurnal'] }}"><x-ikon nama="lihat" ukuran="w-3.5 h-3.5" /> SIRUS</x-secondary-button>
                                             @endif
                                         </td>
                                     </tr>
@@ -238,7 +238,7 @@ new class extends Component {
                                         <td colspan="8" class="px-6 py-8 text-center text-muted dark:text-gray-400">
                                             @if (!$this->adaPosting)
                                                 Belum ada periode yang diposting di rentang ini — buku besar hanya membaca jurnal yang sudah disahkan.
-                                                <a href="{{ route('buku-besar.periode', ['tahun' => substr($periodeDari, 0, 4)]) }}" wire:navigate class="font-medium underline">Sahkan & posting di Periode & Pengesahan</a>.
+                                                <a href="{{ route('buku-besar.periode', ['tahun' => substr($periodeDari, 0, 4)]) }}" wire:navigate class="font-medium underline">Sahkan & posting di Tarik Data SIRUS</a>.
                                             @else
                                                 Tidak ada mutasi akun ini di rentang yang sudah diposting.
                                             @endif
@@ -305,7 +305,7 @@ new class extends Component {
                 </table>
             </div>
             <div class="px-6 py-4 border-t bg-surface-soft border-hairline dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex justify-end"><x-secondary-button type="button" wire:click="tutupRincian">Tutup</x-secondary-button></div>
+                <div class="flex justify-end"><x-secondary-button type="button" wire:click="tutupRincian"><x-ikon nama="batal" /> Tutup</x-secondary-button></div>
             </div>
         </div>
     </x-modal>

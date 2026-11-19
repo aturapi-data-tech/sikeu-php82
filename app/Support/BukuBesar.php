@@ -66,7 +66,7 @@ class BukuBesar
     }
 
     /**
-     * Ringkasan 12 periode satu tahun untuk layar Periode & Pengesahan.
+     * Ringkasan 12 periode satu tahun untuk layar Tarik Data SIRUS.
      * @return array<int, array<string, mixed>>
      */
     public function periodeList(int $tahun): array

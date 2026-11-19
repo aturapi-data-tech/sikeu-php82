@@ -9,8 +9,9 @@ use App\Support\Format;
 use App\Support\SnapshotJurnal;
 
 /**
- * PERIODE & POSTING — tahun buku, 12 periode, ambil snapshot, sahkan versi + posting ke buku besar, kunci / buka kunci.
- * Tahun diketik bebas (mis. 2025) supaya tahun lama bisa diproses mundur. "Proses Setahun" = antrean: tiap bulan yang
+ * TARIK DATA SIRUS — tahun buku, 12 periode, tarik jurnal SIRUS (snapshot), sahkan versi + posting ke buku besar, kunci.
+ * Satu-satunya layar penarikan data SIRUS (halaman Snapshot Jurnal lama sudah digabung ke sini).
+ * Tahun diketik bebas (mis. 2025) supaya tahun lama bisa diproses mundur. "Tarik & Sahkan Setahun" = antrean: tiap bulan yang
  * belum diposting (sampai bulan berjalan) diambil snapshotnya dari SIRUS lalu disahkan & diposting otomatis; digerakkan
  * wire:poll (pola Snapshot Jurnal) supaya tidak ada request panjang. Logika di App\Support\BukuBesar & SnapshotJurnal.
  * Hak: lihat = laporan.lihat (menu), ambil = snapshot.ambil, posting = jurnal.posting, buka tahun & kunci = periode.kunci.
@@ -118,7 +119,7 @@ new class extends Component {
     {
         abort_unless(auth()->user()?->can('snapshot.ambil'), 403);
         if ($this->snapIdProses !== null) {
-            $this->dispatch('toast', type: 'error', message: 'Masih ada pengambilan yang berjalan — tunggu selesai.');
+            $this->dispatch('toast', type: 'error', message: 'Masih ada penarikan data SIRUS yang berjalan — tunggu selesai.');
             return;
         }
         if (!str_starts_with($periode, $this->tahun) || $periode > now()->format('Ym')) {
@@ -138,7 +139,7 @@ new class extends Component {
     {
         abort_unless(auth()->user()?->can('snapshot.ambil') && auth()->user()?->can('jurnal.posting'), 403);
         if ($this->snapIdProses !== null) {
-            $this->dispatch('toast', type: 'error', message: 'Masih ada pengambilan yang berjalan — tunggu selesai.');
+            $this->dispatch('toast', type: 'error', message: 'Masih ada penarikan data SIRUS yang berjalan — tunggu selesai.');
             return;
         }
         $this->antrean = $this->periodeBelumDiposting;
@@ -174,7 +175,7 @@ new class extends Component {
         }
         if ($this->modeAntrean) {
             $this->modeAntrean = false;
-            $this->dispatch('toast', type: 'success', message: 'Proses setahun selesai: ' . count($this->hasilAntrean) . ' bulan diposting. Periksa Neraca Saldo sebelum mengunci.');
+            $this->dispatch('toast', type: 'success', message: 'Tarik & sahkan setahun selesai: ' . count($this->hasilAntrean) . ' bulan diposting. Periksa Neraca Saldo sebelum mengunci.');
         }
     }
 
@@ -217,13 +218,13 @@ new class extends Component {
                     $this->jalankanAntrean();
                 }
             } else {
-                $this->dispatch('toast', type: 'success', message: 'Snapshot ' . SnapshotJurnal::labelPeriode($periode) . ' selesai — silakan Sahkan & Posting.');
+                $this->dispatch('toast', type: 'success', message: 'Data SIRUS ' . SnapshotJurnal::labelPeriode($periode) . ' selesai ditarik — silakan Sahkan & Posting.');
             }
         }
         if ($kemajuan['status'] === SnapshotJurnal::STATUS_GAGAL) {
             $this->snapIdProses = null;
             $this->periodeProses = '';
-            $pesan = 'Snapshot ' . SnapshotJurnal::labelPeriode($periode) . ' gagal: ' . ($kemajuan['pesan'] ?? 'galat tak dikenal');
+            $pesan = 'Penarikan data SIRUS ' . SnapshotJurnal::labelPeriode($periode) . ' gagal: ' . ($kemajuan['pesan'] ?? 'galat tak dikenal');
             if ($this->modeAntrean) {
                 $this->hentikanAntrean($pesan);
             } else {
@@ -251,7 +252,7 @@ new class extends Component {
         abort_unless(auth()->user()?->can('jurnal.posting'), 403);
         $baris = collect($this->periodeList)->firstWhere('periode', $periode);
         if (!$baris || $baris['versi_list'] === []) {
-            $this->dispatch('toast', type: 'error', message: 'Belum ada snapshot selesai untuk periode ini — klik Ambil Snapshot dulu.');
+            $this->dispatch('toast', type: 'error', message: 'Data SIRUS bulan ini belum ditarik — klik Tarik dari SIRUS dulu.');
             return;
         }
         $this->periodePosting = $periode;
@@ -336,8 +337,8 @@ new class extends Component {
 <div>
 
     <x-page-title
-        title="Periode & Pengesahan"
-        subtitle="Sahkan versi snapshot SIRUS per bulan, posting ke buku besar, lalu kunci periode yang sudah diperiksa" />
+        title="Tarik Data SIRUS"
+        subtitle="Tarik jurnal SIRUS per bulan atau setahun sekaligus, sahkan ke buku besar, lalu kunci periode yang sudah diperiksa" />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-surface-soft dark:bg-gray-900">
         <div class="px-6 pt-2 pb-6 space-y-4">
@@ -348,7 +349,7 @@ new class extends Component {
                     <div>
                         <x-input-label for="tahun" value="Tahun Buku" />
                         <div class="flex items-center gap-1 mt-1">
-                            <x-secondary-button type="button" wire:click="geserTahun(-1)" :disabled="$snapIdProses !== null" class="px-3" aria-label="Tahun sebelumnya">‹</x-secondary-button>
+                            <x-secondary-button type="button" wire:click="geserTahun(-1)" :disabled="$snapIdProses !== null" class="px-3" aria-label="Tahun sebelumnya"><x-ikon nama="sebelumnya" /></x-secondary-button>
                             <div class="relative">
                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                     <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -358,21 +359,22 @@ new class extends Component {
                                 <x-text-input id="tahun" type="text" inputmode="numeric" maxlength="4" wire:model.live.debounce.500ms="tahun"
                                     :disabled="$snapIdProses !== null" placeholder="yyyy" class="block pl-10 w-28" />
                             </div>
-                            <x-secondary-button type="button" wire:click="geserTahun(1)" :disabled="$snapIdProses !== null" class="px-3" aria-label="Tahun berikutnya">›</x-secondary-button>
+                            <x-secondary-button type="button" wire:click="geserTahun(1)" :disabled="$snapIdProses !== null" class="px-3" aria-label="Tahun berikutnya"><x-ikon nama="berikutnya" /></x-secondary-button>
                         </div>
                     </div>
                     @if ($this->tahunAda && $this->periodeBelumDiposting !== [] && !$modeAntrean && $snapIdProses === null)
                         @if (auth()->user()?->can('snapshot.ambil') && auth()->user()?->can('jurnal.posting'))
                             <x-confirm-button variant="primary" action="prosesSetahun()"
-                                title="Proses {{ count($this->periodeBelumDiposting) }} Bulan Tahun {{ $tahun }}"
-                                message="Untuk {{ count($this->periodeBelumDiposting) }} bulan yang belum diposting ({{ SnapshotJurnal::labelPeriode($this->periodeBelumDiposting[0]) }} s/d {{ SnapshotJurnal::labelPeriode(collect($this->periodeBelumDiposting)->last()) }}): ambil snapshot dari SIRUS (kira-kira 40 detik per bulan; versi yang sudah ada dipakai), lalu sahkan & posting otomatis. Biarkan halaman terbuka sampai selesai. Periode TIDAK dikunci otomatis.">
-                                Proses Setahun ({{ count($this->periodeBelumDiposting) }} bulan)
+                                title="Tarik & Sahkan {{ count($this->periodeBelumDiposting) }} Bulan Tahun {{ $tahun }}"
+                                message="Untuk {{ count($this->periodeBelumDiposting) }} bulan yang belum diposting ({{ SnapshotJurnal::labelPeriode($this->periodeBelumDiposting[0]) }} s/d {{ SnapshotJurnal::labelPeriode(collect($this->periodeBelumDiposting)->last()) }}): tarik jurnal dari SIRUS (kira-kira 40-70 detik per bulan; hasil tarikan yang sudah ada dipakai), lalu sahkan & posting otomatis. Biarkan halaman terbuka sampai selesai. Periode TIDAK dikunci otomatis.">
+                                <x-ikon nama="proses" /> Tarik & Sahkan Setahun ({{ count($this->periodeBelumDiposting) }} bulan)
                             </x-confirm-button>
                         @endif
                     @endif
                 </div>
                 <div class="px-4 py-2 text-xs rounded-lg bg-info-tint text-info-deep dark:bg-blue-900/30 dark:text-blue-200 lg:max-w-2xl">
-                    Alur: <b>Ambil Snapshot</b> → <b>Sahkan & Posting</b> → periksa di Neraca Saldo → <b>Kunci</b>. Ketik tahun (mis. 2025) untuk memproses tahun lama.
+                    Alur: <b>Tarik dari SIRUS</b> → <b>Sahkan & Posting</b> → periksa di Neraca Saldo → <b>Kunci</b>. Ketik tahun (mis. 2025) untuk menarik data tahun lama.
+                    Tarik ulang kapan saja bila data SIRUS berubah: hasil tarikan lama tetap disimpan dan bisa dibandingkan.
                     Selama periode Buka, versi lain boleh disahkan (posting lama dibatalkan, tetap tersimpan). Kunci berurutan dari bulan terlama.
                 </div>
             </div>
@@ -394,25 +396,25 @@ new class extends Component {
                         <div>
                             <p class="text-sm font-semibold text-blue-900 dark:text-blue-100">
                                 @if ($snapIdProses !== null)
-                                    Mengambil snapshot {{ SnapshotJurnal::labelPeriode($periodeProses) }} — {{ (int) ($kemajuan['cabang_selesai'] ?? 0) }} dari {{ $jumlahCabang }} cabang jurnal ({{ $persen }}%)
+                                    Menarik data SIRUS {{ SnapshotJurnal::labelPeriode($periodeProses) }} — {{ (int) ($kemajuan['cabang_selesai'] ?? 0) }} dari {{ $jumlahCabang }} cabang jurnal ({{ $persen }}%)
                                 @else
                                     Memposting...
                                 @endif
                             </p>
                             @if ($modeAntrean)
                                 <p class="mt-1 text-xs text-blue-800 dark:text-blue-200">
-                                    Proses setahun: {{ count($hasilAntrean) }} bulan diposting{{ $antrean !== [] ? ' · menunggu: ' . collect($antrean)->map(fn ($periode) => SnapshotJurnal::labelPeriode($periode))->implode(', ') : '' }}
+                                    Tarik & sahkan setahun: {{ count($hasilAntrean) }} bulan diposting{{ $antrean !== [] ? ' · menunggu: ' . collect($antrean)->map(fn ($periode) => SnapshotJurnal::labelPeriode($periode))->implode(', ') : '' }}
                                 </p>
                             @endif
                         </div>
                         @if ($modeAntrean)
-                            <x-secondary-button type="button" wire:click="hentikanAntrean" class="px-3 py-1.5 text-xs">Hentikan antrean</x-secondary-button>
+                            <x-danger-button type="button" wire:click="hentikanAntrean" class="px-3 py-1.5 text-xs"><x-ikon nama="hentikan" ukuran="w-3.5 h-3.5" /> Hentikan antrean</x-danger-button>
                         @endif
                     </div>
                     @if ($snapIdProses !== null)
-                        <div class="mt-2"><progress value="{{ $persen }}" max="100" aria-label="Kemajuan pengambilan snapshot" class="block w-full h-2 overflow-hidden rounded-full appearance-none [&::-webkit-progress-bar]:bg-white [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-value]:bg-blue-600 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:transition-all motion-reduce:[&::-webkit-progress-value]:transition-none [&::-moz-progress-bar]:bg-blue-600 [&::-moz-progress-bar]:rounded-full bg-white dark:bg-gray-800 dark:[&::-webkit-progress-bar]:bg-gray-800">{{ $persen }}%</progress></div>
+                        <div class="mt-2"><progress value="{{ $persen }}" max="100" aria-label="Kemajuan penarikan data SIRUS" class="block w-full h-2 overflow-hidden rounded-full appearance-none [&::-webkit-progress-bar]:bg-white [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-value]:bg-blue-600 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:transition-all motion-reduce:[&::-webkit-progress-value]:transition-none [&::-moz-progress-bar]:bg-blue-600 [&::-moz-progress-bar]:rounded-full bg-white dark:bg-gray-800 dark:[&::-webkit-progress-bar]:bg-gray-800">{{ $persen }}%</progress></div>
                     @endif
-                    <p class="mt-2 text-xs text-blue-800 dark:text-blue-200">Biarkan halaman terbuka. Bila tertutup, buka lagi halaman ini untuk melanjutkan pengambilan.</p>
+                    <p class="mt-2 text-xs text-blue-800 dark:text-blue-200">Biarkan halaman terbuka. Bila tertutup, buka lagi halaman ini untuk melanjutkan penarikan.</p>
                 </div>
             @endif
 
@@ -430,7 +432,7 @@ new class extends Component {
                         <x-confirm-button variant="primary" action="bukaTahun()" class="mt-3"
                             title="Buka Tahun Buku {{ $tahun }}"
                             message="Membuat tahun buku {{ $tahun }} dan 12 periode berstatus Buka.">
-                            Buka Tahun Buku {{ $tahun }}
+                            <x-ikon nama="tambah" /> Buka Tahun Buku {{ $tahun }}
                         </x-confirm-button>
                     @else
                         <p class="mt-2 text-xs text-muted">Minta pemegang hak "periode.kunci" membuka tahun buku.</p>
@@ -444,7 +446,7 @@ new class extends Component {
                                 <th>Periode</th>
                                 <th class="ds-c">Status</th>
                                 <th>Versi Disahkan</th>
-                                <th class="ds-c">Snapshot</th>
+                                <th class="ds-c">Hasil Tarikan</th>
                                 <th class="text-right">Total Jurnal (D = K)</th>
                                 <th class="ds-c">Aksi</th>
                             </tr>
@@ -480,7 +482,7 @@ new class extends Component {
                                     </td>
                                     <td class="ds-c">
                                         @if ($periodeProses === $row['periode'])
-                                            <span class="text-xs font-medium text-blue-700 dark:text-blue-300">sedang diambil...</span>
+                                            <span class="text-xs font-medium text-blue-700 dark:text-blue-300">sedang ditarik...</span>
                                         @elseif (count($row['versi_list']) > 0)
                                             <span class="text-xs">{{ count($row['versi_list']) }} versi</span>
                                         @else
@@ -491,7 +493,7 @@ new class extends Component {
                                                 <div class="mt-1">
                                                     <button type="button" wire:click="ambilSnapshot('{{ $row['periode'] }}')" wire:loading.attr="disabled" wire:target="ambilSnapshot('{{ $row['periode'] }}')"
                                                         class="text-xs font-medium rounded text-brand-green hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green dark:text-brand-lime">
-                                                        {{ count($row['versi_list']) > 0 ? '+ Ambil versi baru' : 'Ambil Snapshot' }}
+                                                        <span class="inline-flex items-center gap-1"><x-ikon nama="muat-ulang" ukuran="w-3.5 h-3.5" /> {{ count($row['versi_list']) > 0 ? 'Tarik ulang' : 'Tarik dari SIRUS' }}</span>
                                                     </button>
                                                 </div>
                                             @endcan
@@ -503,22 +505,22 @@ new class extends Component {
                                             @if ($row['status'] === 'B' && count($row['versi_list']) > 0 && $snapIdProses === null && !$modeAntrean)
                                                 @can('jurnal.posting')
                                                     <x-primary-button type="button" class="px-3 py-1.5 text-sm" wire:click="bukaPosting('{{ $row['periode'] }}')">
-                                                        {{ $row['versi_sah'] ? 'Ganti Versi' : 'Sahkan & Posting' }}
+                                                        <x-ikon nama="setujui" /> {{ $row['versi_sah'] ? 'Ganti Versi' : 'Sahkan & Posting' }}
                                                     </x-primary-button>
                                                 @endcan
                                             @endif
                                             @if ($row['status'] === 'B' && $row['versi_sah'])
                                                 @can('periode.kunci')
-                                                    <x-confirm-button variant="warning-soft" :action="'kunci(\'' . $row['periode'] . '\')'" class="px-3 py-1.5"
+                                                    <x-confirm-button variant="primary" :action="'kunci(\'' . $row['periode'] . '\')'" class="px-3 py-1.5"
                                                         title="Kunci Periode {{ SnapshotJurnal::labelPeriode($row['periode']) }}"
                                                         message="Sesudah dikunci, periode ini tidak menerima posting / jurnal baru sampai dibuka kembali dengan alasan. Pastikan Neraca Saldo sudah diperiksa.">
-                                                        Kunci
+                                                        <x-ikon nama="kunci" /> Kunci
                                                     </x-confirm-button>
                                                 @endcan
                                             @endif
                                             @if ($row['status'] === 'K')
                                                 @can('periode.kunci')
-                                                    <x-secondary-button type="button" class="px-3 py-1.5 text-sm" wire:click="bukaFormBukaKunci('{{ $row['periode'] }}')">Buka Kunci</x-secondary-button>
+                                                    <x-secondary-button type="button" class="px-3 py-1.5 text-sm" wire:click="bukaFormBukaKunci('{{ $row['periode'] }}')"><x-ikon nama="buka-kunci" /> Buka Kunci</x-secondary-button>
                                                 @endcan
                                             @endif
                                             @if ($row['versi_sah'])
@@ -547,7 +549,7 @@ new class extends Component {
             <div class="flex-1 px-4 py-4 space-y-4 bg-surface-soft dark:bg-gray-950/20">
                 @php $barisPosting = collect($this->periodeList)->firstWhere('periode', $periodePosting); @endphp
                 @if ($barisPosting)
-                    <x-border-form title="Pilih Versi Snapshot">
+                    <x-border-form title="Pilih Hasil Tarikan (versi)">
                         <div class="space-y-2">
                             @php $versiUrut = $barisPosting['versi_list']; @endphp
                             @foreach (array_reverse($versiUrut, true) as $indeksVersi => $versi)
@@ -561,7 +563,7 @@ new class extends Component {
                                             <x-badge variant="success" class="ml-1">sedang disahkan</x-badge>
                                         @endif
                                         <span class="block text-xs text-muted dark:text-gray-400">
-                                            diambil {{ Format::waktu($versi['selesai_at']) }} · {{ number_format((int) $versi['jumlah_baris'], 0, ',', '.') }} baris · D = K Rp {{ Format::uang($versi['total_debit']) }}
+                                            ditarik {{ Format::waktu($versi['selesai_at']) }} · {{ number_format((int) $versi['jumlah_baris'], 0, ',', '.') }} baris · D = K Rp {{ Format::uang($versi['total_debit']) }}
                                         </span>
                                         @if ($versiSebelum)
                                             @if ($versiSebelum['checksum'] === $versi['checksum'])
@@ -596,10 +598,10 @@ new class extends Component {
 
             <div class="sticky bottom-0 z-10 px-6 py-4 mt-auto bg-surface-soft border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-2">
-                    <x-secondary-button type="button" wire:click="tutupPosting">Batal</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="tutupPosting"><x-ikon nama="batal" /> Batal</x-secondary-button>
                     <x-primary-button type="button" wire:click="sahkanPosting" wire:loading.attr="disabled" wire:target="sahkanPosting"
                         :disabled="$this->akunBelumSiap !== [] || !$snapIdPilih || ($barisPosting && (int) $snapIdPilih === (int) $barisPosting['snap_id_sah'])">
-                        <span wire:loading.remove wire:target="sahkanPosting">Sahkan & Posting</span>
+                        <span wire:loading.remove wire:target="sahkanPosting" class="inline-flex items-center gap-2"><x-ikon nama="setujui" /> Sahkan & Posting</span>
                         <span wire:loading wire:target="sahkanPosting">Memposting...</span>
                     </x-primary-button>
                 </div>
@@ -619,8 +621,8 @@ new class extends Component {
                 <x-input-error :messages="$errors->get('alasanBuka')" class="mt-1" />
             </div>
             <div class="flex justify-end gap-2 mt-4">
-                <x-secondary-button type="button" wire:click="tutupBukaKunci">Batal</x-secondary-button>
-                <x-warning-button type="button" wire:click="bukaKunci" wire:loading.attr="disabled" wire:target="bukaKunci">Buka Kunci</x-warning-button>
+                <x-secondary-button type="button" wire:click="tutupBukaKunci"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                <x-warning-button type="button" wire:click="bukaKunci" wire:loading.attr="disabled" wire:target="bukaKunci"><x-ikon nama="buka-kunci" /> Buka Kunci</x-warning-button>
             </div>
         </div>
     </x-modal>

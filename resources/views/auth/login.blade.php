@@ -42,7 +42,7 @@
             @endif
 
             <x-primary-button class="ms-3">
-                {{ __('Login') }}
+                <x-ikon nama="masuk" /> Masuk
             </x-primary-button>
         </div>
     </form>

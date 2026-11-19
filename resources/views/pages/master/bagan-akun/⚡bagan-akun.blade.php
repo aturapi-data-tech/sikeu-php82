@@ -194,7 +194,7 @@ new class extends Component {
                             @endif
                         </span>
                         @can('akun.kelola')
-                            <x-primary-button type="button" wire:click="openCreate">+ Tambah Akun</x-primary-button>
+                            <x-primary-button type="button" wire:click="openCreate"><x-ikon nama="tambah" /> Tambah Akun</x-primary-button>
                         @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
@@ -293,7 +293,7 @@ new class extends Component {
                                                 @if ($row->tipe === 'H' && $row->aktif === '1' && (int) $row->tingkat < FormatKodeAkun::jumlahTingkat())
                                                     <x-secondary-button type="button" class="px-2.5 py-1.5 text-sm"
                                                         wire:click="openCreate('{{ $row->akun_id }}')"
-                                                        aria-label="Tambah akun di bawah {{ $row->akun_id }}">+ Anak</x-secondary-button>
+                                                        aria-label="Tambah akun di bawah {{ $row->akun_id }}"><x-ikon nama="tambah" /> Tambah Anak</x-secondary-button>
                                                 @endif
                                                 <x-action-edit wire:click="openEdit('{{ $row->akun_id }}')" />
                                                 @if ((int) $row->tingkat >= 2)

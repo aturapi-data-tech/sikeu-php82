@@ -283,13 +283,13 @@ new class extends Component {
                     <div class="flex flex-wrap gap-2">
                         <x-confirm-button variant="primary" action="tarikDariSirus()" title="Tarik Saldo Awal {{ $tahun }} dari SIRUS"
                             message="Saldo awal SIRUS (tktxn_saldoawalakuns) diubah lewat peta akun jadi DRAFT baru. Draft yang ada sekarang diganti; saldo awal sah tetap berlaku sampai draft baru disahkan.">
-                            Tarik dari SIRUS
+                            <x-ikon nama="muat-ulang" /> Tarik dari SIRUS
                         </x-confirm-button>
                         @if (!$draft && $sah)
-                            <x-secondary-button type="button" wire:click="koreksiDariSah" wire:loading.attr="disabled" wire:target="koreksiDariSah">Koreksi Saldo Sah</x-secondary-button>
+                            <x-secondary-button type="button" wire:click="koreksiDariSah" wire:loading.attr="disabled" wire:target="koreksiDariSah"><x-ikon nama="ubah" /> Koreksi Saldo Sah</x-secondary-button>
                         @endif
                         @if (!$draft)
-                            <x-secondary-button type="button" wire:click="draftKosong" wire:loading.attr="disabled" wire:target="draftKosong">Draft Kosong</x-secondary-button>
+                            <x-secondary-button type="button" wire:click="draftKosong" wire:loading.attr="disabled" wire:target="draftKosong"><x-ikon nama="tambah" /> Draft Kosong</x-secondary-button>
                         @endif
                     </div>
                 @endif
@@ -298,7 +298,7 @@ new class extends Component {
             @if (!$this->periodeAwal)
                 <div class="p-6 text-center border border-dashed rounded-2xl border-hairline bg-canvas dark:bg-gray-800 dark:border-gray-700">
                     Tahun buku {{ $tahun }} belum dibuka.
-                    <a href="{{ route('buku-besar.periode', ['tahun' => $tahun]) }}" wire:navigate class="font-medium underline">Buka di Periode & Pengesahan</a>.
+                    <a href="{{ route('buku-besar.periode', ['tahun' => $tahun]) }}" wire:navigate class="font-medium underline">Buka di Tarik Data SIRUS</a>.
                 </div>
             @else
                 @if ($this->tahunLaluAdaJurnal)
@@ -323,7 +323,7 @@ new class extends Component {
                             </div>
                         @endforeach
                         @can('akun.kelola')
-                            <div><x-secondary-button type="button" wire:click="simpanAkunLaba" wire:loading.attr="disabled" wire:target="simpanAkunLaba">Simpan Akun Laba</x-secondary-button></div>
+                            <div><x-secondary-button type="button" wire:click="simpanAkunLaba" wire:loading.attr="disabled" wire:target="simpanAkunLaba"><x-ikon nama="simpan" /> Simpan Akun Laba</x-secondary-button></div>
                         @endcan
                     </div>
                     <p class="mt-2 text-[11px] text-muted dark:text-gray-400">Saldo awal akun Laba Rugi dan akun laba berjalan dari sistem lama otomatis dipindah ke akun laba ditahan.</p>
@@ -345,12 +345,12 @@ new class extends Component {
                                     <x-badge variant="success">Seimbang</x-badge>
                                 @endif
                                 @if ($bolehUbah)
-                                    <x-secondary-button type="button" wire:click="bukaBaris">+ Baris</x-secondary-button>
-                                    <x-confirm-button variant="danger-soft" action="hapusDraft()" title="Hapus Draft" message="Draft saldo awal dibuang. Saldo awal sah (bila ada) tetap berlaku.">Hapus Draft</x-confirm-button>
+                                    <x-secondary-button type="button" wire:click="bukaBaris"><x-ikon nama="tambah" /> Tambah Baris</x-secondary-button>
+                                    <x-confirm-button variant="danger-soft" action="hapusDraft()" title="Hapus Draft" message="Draft saldo awal dibuang. Saldo awal sah (bila ada) tetap berlaku."><x-ikon nama="hapus" /> Hapus Draft</x-confirm-button>
                                     <x-confirm-button variant="primary" action="sahkan()" :disabled="$selisih != 0.0"
                                         title="Sahkan Saldo Awal {{ $tahun }}"
                                         message="Draft menjadi saldo awal resmi {{ $tahun }} dan langsung dipakai Neraca Saldo & Buku Besar. Saldo awal sah sebelumnya dibatalkan.">
-                                        Sahkan
+                                        <x-ikon nama="setujui" /> Sahkan
                                     </x-confirm-button>
                                 @endif
                             </div>
@@ -367,7 +367,7 @@ new class extends Component {
                                         @endforeach
                                     </x-select-input>
                                 </div>
-                                <x-warning-button type="button" wire:click="seimbangkan" wire:loading.attr="disabled" wire:target="seimbangkan">Seimbangkan ke akun ini</x-warning-button>
+                                <x-warning-button type="button" wire:click="seimbangkan" wire:loading.attr="disabled" wire:target="seimbangkan"><x-ikon nama="proses" /> Seimbangkan ke akun ini</x-warning-button>
                             </div>
                         @endif
 
@@ -432,8 +432,8 @@ new class extends Component {
                 <x-text-input id="barisKeterangan" wire:model="barisKeterangan" maxlength="500" placeholder="mis. rekening koran 31/12, hasil opname 31/12" class="mt-1" />
             </div>
             <div class="flex justify-end gap-2">
-                <x-secondary-button type="button" wire:click="tutupBaris">Batal</x-secondary-button>
-                <x-primary-button type="button" wire:click="simpanBaris" wire:loading.attr="disabled" wire:target="simpanBaris">Simpan</x-primary-button>
+                <x-secondary-button type="button" wire:click="tutupBaris"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                <x-primary-button type="button" wire:click="simpanBaris" wire:loading.attr="disabled" wire:target="simpanBaris"><x-ikon nama="simpan" /> Simpan</x-primary-button>
             </div>
         </div>
     </x-modal>

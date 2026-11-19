@@ -64,7 +64,7 @@ new class extends Component {
 
             @can('akun.kelola')
                 <div class="flex justify-end mt-3">
-                    <x-primary-button type="button" wire:click="openCreate">+ Tambah Kelompok</x-primary-button>
+                    <x-primary-button type="button" wire:click="openCreate"><x-ikon nama="tambah" /> Tambah Kelompok</x-primary-button>
                 </div>
             @endcan
 

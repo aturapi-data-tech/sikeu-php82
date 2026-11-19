@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 /**
  * Ambil snapshot jurnal SIRUS satu periode dari baris perintah — untuk cutoff terjadwal (cron) atau periode besar.
- * Mesin sama dengan layar Pembukuan > Periode & Pengesahan (App\Support\SnapshotJurnal). Versi berstatus Proses dilanjutkan.
+ * Mesin sama dengan layar Pembukuan > Tarik Data SIRUS (App\Support\SnapshotJurnal). Versi berstatus Proses dilanjutkan.
  *
  *   php artisan sikeu:ambil-jurnal 202610
  */

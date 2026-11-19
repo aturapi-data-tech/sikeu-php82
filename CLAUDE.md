@@ -35,11 +35,15 @@ Oracle 10g (yajra/laravel-oci8), Tailwind + Alpine, Spatie Permission.
 7. **Hal yang beda antar-instansi = pengaturan, bukan konstanta** (tabel `sikeumst_pengaturans`, DDL 04, kelas
    `App\Support\Pengaturan`). Format kode akun dibaca lewat `App\Support\FormatKodeAkun` — jangan menulis
    jumlah tingkat/digit/pemisah/nomor kontra di kode.
-8. **Buku besar** (`App\Support\BukuBesar`, layar Pembukuan › Periode & Pengesahan / Neraca Saldo / Buku Besar):
+8. **Buku besar** (`App\Support\BukuBesar`, layar Pembukuan › Tarik Data SIRUS / Neraca Saldo / Buku Besar):
    versi snapshot yang DISAHKAN per periode diposting jadi satu jurnal per hari (sumber SIRUS), baris = Σ per
    (tanggal, cabang, akun, lawan, sisi) lewat peta akun; posting ulang selama periode Buka → jurnal lama status B.
    Saldo = Σ jurnal status P (akun L hanya sejak Januari). Kunci berurutan dari bulan terlama; buka kunci hanya
    periode terkunci terakhir + alasan. Jangan UPDATE/DELETE jurnal P — batalkan (status B).
+10. **Ikon tombol baku** = `App\Support\IkonTombol::PETA` (salinan dari SIRUS + `kurangi`, `tukar`) lewat
+   `<x-ikon nama="simpan" />` di dalam tombol berteks; satu aksi = satu ikon + satu komponen tombol (lihat kolom `tombol`).
+   Jangan menulis `<svg>` inline / emoji / tanda "+" di label ("Tambah …" + ikon `tambah`). Baris tabel: `x-action-edit`,
+   `x-lihat-button`, `x-cetak-button`, `x-action-delete`. Aksi baru → tambah entri di peta dulu.
 9. **Akuntansi & laporan keuangan**: baca skill `keuangan-rs` dulu (standar, kebijakan RS, celah data SIRUS, urutan kerja).
 
 ## Uji lokal

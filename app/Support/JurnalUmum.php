@@ -32,7 +32,7 @@ class JurnalUmum
     {
         $periodeRow = DB::table('sikeumst_periodes')->where('periode', $periode)->first();
         if (!$periodeRow) {
-            throw new RuntimeException('Periode ' . SnapshotJurnal::labelPeriode($periode) . ' belum dibuka — buka tahun bukunya di Periode & Pengesahan.');
+            throw new RuntimeException('Periode ' . SnapshotJurnal::labelPeriode($periode) . ' belum dibuka — buka tahun bukunya di Tarik Data SIRUS.');
         }
         if ($periodeRow->status !== BukuBesar::STATUS_BUKA) {
             throw new RuntimeException('Periode ' . SnapshotJurnal::labelPeriode($periode) . ' sudah dikunci — pilih tanggal di periode yang masih Buka.');

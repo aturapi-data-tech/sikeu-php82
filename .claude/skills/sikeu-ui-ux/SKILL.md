@@ -55,6 +55,8 @@ Aturan:
 | Kebutuhan | Komponen |
 |---|---|
 | Tombol | `x-primary-button`, `x-secondary-button`, `x-ghost-button`, `x-outline-button`, `x-danger-button`, `x-warning-button`, `x-icon-button` |
+| Ikon di tombol berteks | `<x-ikon nama="…" />` dari `App\Support\IkonTombol::PETA` (simpan, batal, tambah, ubah, hapus, setujui, muat-ulang, proses, kunci, salin, …) — tanpa `<svg>` inline, tanpa emoji, tanpa "+" di teks |
+| Penanda peringatan (bukan tombol) | `x-ikon-peringatan` |
 | Aksi baris tabel | `x-lihat-button`, `x-cetak-button`, `x-hapus-button`, `x-action-edit`, `x-action-delete` |
 | Aksi berisiko (hapus, finalkan, generate, buka kunci) | `x-confirm-button` (punya spinner + `wire:target`) |
 | Modal & form modal | `x-modal` + `x-dirty-modal-content` (peringatan "Data belum disimpan") |

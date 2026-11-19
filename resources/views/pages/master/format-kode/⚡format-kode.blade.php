@@ -196,8 +196,8 @@ new class extends Component {
                         <x-input-error :messages="$errors->get('digitList')" />
                         @if ($kelola)
                             <div class="flex gap-2 pt-2">
-                                <x-secondary-button type="button" wire:click="tambahTingkat" :disabled="count($digitList) >= FormatKodeAkun::TINGKAT_MAKS">+ Tingkat</x-secondary-button>
-                                <x-secondary-button type="button" wire:click="kurangiTingkat" :disabled="count($digitList) <= FormatKodeAkun::TINGKAT_MIN">- Tingkat</x-secondary-button>
+                                <x-secondary-button type="button" wire:click="tambahTingkat" :disabled="count($digitList) >= FormatKodeAkun::TINGKAT_MAKS"><x-ikon nama="tambah" /> Tambah Tingkat</x-secondary-button>
+                                <x-secondary-button type="button" wire:click="kurangiTingkat" :disabled="count($digitList) <= FormatKodeAkun::TINGKAT_MIN"><x-ikon nama="kurangi" /> Kurangi Tingkat</x-secondary-button>
                             </div>
                         @endif
                     </div>
@@ -234,9 +234,9 @@ new class extends Component {
 
             @if ($kelola)
                 <div class="flex justify-end gap-2">
-                    <x-secondary-button type="button" wire:click="batal" wire:loading.attr="disabled" wire:target="batal">Batal</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="batal" wire:loading.attr="disabled" wire:target="batal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                     <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled" wire:target="save">
-                        <span wire:loading.remove wire:target="save">Simpan Format</span>
+                        <span wire:loading.remove wire:target="save" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Format</span>
                         <span wire:loading wire:target="save">Menyimpan...</span>
                     </x-primary-button>
                 </div>

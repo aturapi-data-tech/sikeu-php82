@@ -203,7 +203,7 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah User
+                            <x-ikon nama="tambah" /> Tambah Pengguna
                         </x-primary-button>
                         <x-toolbar-refresh-reset :label="null" />
                     </div>

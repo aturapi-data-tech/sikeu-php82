@@ -45,7 +45,7 @@
             </a>
 
             <x-primary-button class="ms-4">
-                {{ __('Register') }}
+                <x-ikon nama="setujui" /> Daftar
             </x-primary-button>
         </div>
     </form>

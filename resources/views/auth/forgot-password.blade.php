@@ -18,7 +18,7 @@
 
         <div class="flex items-center justify-end mt-4">
             <x-primary-button>
-                {{ __('Email Password Reset Link') }}
+                <x-ikon nama="kirim" /> Kirim Tautan Atur Ulang Sandi
             </x-primary-button>
         </div>
     </form>

@@ -109,7 +109,7 @@ new class extends Component {
                         <x-badge variant="danger" class="mb-2">TIDAK seimbang</x-badge>
                     @endif
                 </div>
-                <x-secondary-button type="button" x-on:click="window.print()">Cetak</x-secondary-button>
+                <x-cetak-button x-on:click="window.print()" label="Cetak" />
             </div>
 
             {{-- PEMERIKSAAN --}}
@@ -126,7 +126,7 @@ new class extends Component {
                 @if ($this->periodeBelumPosting !== [])
                     <div role="status" class="px-4 py-2 text-sm rounded-lg bg-warning-soft text-fg-warning">
                         Belum diposting: {{ implode(', ', $this->periodeBelumPosting) }} — saldo akhir {{ SnapshotJurnal::labelPeriode($periode) }} belum lengkap.
-                        <a href="{{ route('buku-besar.periode', ['tahun' => substr($periode, 0, 4)]) }}" wire:navigate class="font-medium underline">Periode & Pengesahan</a>
+                        <a href="{{ route('buku-besar.periode', ['tahun' => substr($periode, 0, 4)]) }}" wire:navigate class="font-medium underline">Tarik Data SIRUS</a>
                     </div>
                 @endif
                 @if (($pemeriksaan['yatim'] ?? []) !== [])

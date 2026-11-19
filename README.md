@@ -39,7 +39,7 @@ Mesin jurnal tetap satu, di SIRUS (`App\Support\Keuangan\Jurnal` + `JurnalCabang
 
 ### Cutoff & pembanding versi
 
-- **Pembukuan › Periode & Pengesahan** — tiap "Ambil Snapshot" / "Proses Setahun" menyimpan jurnal satu bulan sebagai **versi baru**
+- **Pembukuan › Tarik Data SIRUS** — tiap "Tarik dari SIRUS" / "Tarik & Sahkan Setahun" menyimpan jurnal satu bulan sebagai **versi baru**
   (`sikeutxn_snap_hdrs` / `_cabangs` / `_dtls`); versi lama tidak pernah ditimpa. Checksum per cabang & per versi.
 - **Bandingkan Versi** — dua versi dibandingkan sampai tingkat transaksi: **baru**, **hilang**, **berubah**
   (nominal / tanggal / akun / shift). Hanya cabang yang checksum-nya beda yang dibandingkan per baris.
