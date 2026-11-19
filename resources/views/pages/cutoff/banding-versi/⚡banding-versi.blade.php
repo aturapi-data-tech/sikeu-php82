@@ -160,7 +160,7 @@ new class extends Component {
                     $versiBaru = $this->versiList->firstWhere('snap_id', $baru);
                     $jumlahPerJenis = collect($hasil['baris'])->countBy('jenis');
                     $barisTampil = $filterJenis === 'semua' ? $hasil['baris'] : array_values(array_filter($hasil['baris'], fn ($baris) => $baris['jenis'] === $filterJenis));
-                    $rupiah = fn ($nilai) => $nilai === null ? '—' : number_format((float) $nilai, 2, ',', '.');
+                    $rupiah = fn ($nilai) => $nilai === null ? '—' : Format::uang($nilai);
                 @endphp
 
                 {{-- RINGKASAN TOTAL --}}
@@ -169,10 +169,10 @@ new class extends Component {
                         @php $selisih = (float) $versiBaru->{$kolom} - (float) $versiLama->{$kolom}; @endphp
                         <div class="p-4 border rounded-xl border-hairline bg-surface-card dark:bg-gray-800 dark:border-gray-700">
                             <p class="text-xs font-semibold uppercase text-muted">{{ $judul }}</p>
-                            <p class="mt-1 text-sm ds-td-token">v{{ $versiLama->versi }}: {{ number_format((float) $versiLama->{$kolom}, $desimal, ',', '.') }}</p>
-                            <p class="text-sm ds-td-token">v{{ $versiBaru->versi }}: {{ number_format((float) $versiBaru->{$kolom}, $desimal, ',', '.') }}</p>
+                            <p class="mt-1 text-sm ds-td-token">v{{ $versiLama->versi }}: {{ Format::uang($versiLama->{$kolom}, $desimal) }}</p>
+                            <p class="text-sm ds-td-token">v{{ $versiBaru->versi }}: {{ Format::uang($versiBaru->{$kolom}, $desimal) }}</p>
                             <p @class(['mt-1 text-sm font-semibold', 'text-fg-success-strong' => $selisih == 0, 'text-fg-danger-strong' => $selisih != 0])>
-                                Selisih {{ $selisih > 0 ? '+' : '' }}{{ number_format($selisih, $desimal, ',', '.') }}
+                                Selisih {{ $selisih > 0 ? '+' : '' }}{{ Format::uang($selisih, $desimal) }}
                             </p>
                         </div>
                     @endforeach
@@ -189,18 +189,20 @@ new class extends Component {
                             {{ count($hasil['cabang']) }} cabang jurnal berbeda
                         </summary>
                         <div class="overflow-x-auto">
-                            <table class="ds-table">
+                            <table class="ds-table ds-table-entri">
                                 <thead>
-                                    <tr><th>No</th><th>Cabang</th><th class="text-right">Baris lama → baru</th><th class="text-right">Debit lama → baru</th><th class="text-right">Kredit lama → baru</th></tr>
+                                    <tr><th class="w-16">No</th><th>Jenis transaksi (cabang jurnal SIRUS)</th><th class="text-right">Baris lama → baru</th><th class="text-right">Debit lama → baru</th><th class="text-right">Kredit lama → baru</th></tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($hasil['cabang'] as $cabang)
+                                        {{-- label_cabang = teks query SIRUS → yang tampil hanya nama transaksinya; teks lengkap di title --}}
+                                        @php $labelBaca = \App\Support\BukuBesar::labelCabangBaca($cabang->label_cabang) ?: 'Cabang ' . $cabang->cabang_no; @endphp
                                         <tr wire:key="cabang-{{ $cabang->cabang_kunci }}">
                                             <td class="ds-td-meta">{{ $cabang->cabang_no }}</td>
-                                            <td class="max-w-md text-xs break-all ds-td-meta">{{ \Illuminate\Support\Str::limit($cabang->label_cabang, 120) }}</td>
-                                            <td class="text-right ds-td-token">{{ $cabang->baris_lama ?? '—' }} → {{ $cabang->baris_baru ?? '—' }}</td>
-                                            <td class="text-right ds-td-token">{{ $rupiah($cabang->debit_lama) }} → {{ $rupiah($cabang->debit_baru) }}</td>
-                                            <td class="text-right ds-td-token">{{ $rupiah($cabang->kredit_lama) }} → {{ $rupiah($cabang->kredit_baru) }}</td>
+                                            <td title="{{ $cabang->label_cabang }}"><span class="font-medium text-ink dark:text-gray-100">{{ $labelBaca }}</span></td>
+                                            <td class="text-right tabular-nums whitespace-nowrap">{{ $cabang->baris_lama ?? '—' }} → {{ $cabang->baris_baru ?? '—' }}</td>
+                                            <td class="text-right tabular-nums whitespace-nowrap">{{ $rupiah($cabang->debit_lama) }} → {{ $rupiah($cabang->debit_baru) }}</td>
+                                            <td class="text-right tabular-nums whitespace-nowrap">{{ $rupiah($cabang->kredit_lama) }} → {{ $rupiah($cabang->kredit_baru) }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -208,27 +210,22 @@ new class extends Component {
                         </div>
                     </details>
 
-                    {{-- FILTER JENIS --}}
-                    <div class="flex flex-wrap gap-1.5" role="group" aria-label="Saring jenis perbedaan">
+                    {{-- FILTER JENIS — komponen tab baku (tinggi standar) --}}
+                    <x-tabs aria-label="Saring jenis perbedaan">
                         @foreach (['semua' => 'Semua', 'baru' => 'Baru', 'hilang' => 'Hilang', 'berubah' => 'Berubah'] as $jenis => $labelJenis)
-                            <button type="button" wire:click="$set('filterJenis', '{{ $jenis }}')" aria-pressed="{{ $filterJenis === $jenis ? 'true' : 'false' }}"
-                                @class([
-                                    'inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border transition',
-                                    'bg-brand-green text-white border-brand-green dark:bg-brand-lime dark:text-ink dark:border-brand-lime' => $filterJenis === $jenis,
-                                    'bg-surface-card text-body border-hairline hover:bg-surface-strong dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600' => $filterJenis !== $jenis,
-                                ])>
+                            <x-tab :active="$filterJenis === $jenis" wire:click="$set('filterJenis', '{{ $jenis }}')">
                                 {{ $labelJenis }} ({{ $jenis === 'semua' ? count($hasil['baris']) : ($jumlahPerJenis[$jenis] ?? 0) }})
-                            </button>
+                            </x-tab>
                         @endforeach
-                    </div>
+                    </x-tabs>
 
                     @if ($hasil['terpotong'])
-                        <p class="text-sm text-fg-warning">Perbedaan lebih dari {{ number_format(SnapshotJurnal::BATAS_BARIS_SELISIH, 0, ',', '.') }} baris — yang tampil hanya sebagian pertama.</p>
+                        <p class="text-sm text-fg-warning">Perbedaan lebih dari {{ Format::uang(SnapshotJurnal::BATAS_BARIS_SELISIH, 0) }} baris — yang tampil hanya sebagian pertama.</p>
                     @endif
 
                     {{-- BARIS SELISIH --}}
-                    <div class="overflow-x-auto border rounded-xl border-hairline bg-surface-card dark:bg-gray-800 dark:border-gray-700">
-                        <table class="ds-table">
+                    <div class="overflow-x-auto bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                        <table class="ds-table ds-table-entri">
                             <thead>
                                 <tr>
                                     <th>Jenis</th>
@@ -255,7 +252,7 @@ new class extends Component {
                                                 {{ Format::waktu($baris['tanggal_baru'] ?? $baris['tanggal_lama']) }}
                                             @endif
                                         </td>
-                                        <td class="max-w-md text-sm break-words text-ink dark:text-white">
+                                        <td class="max-w-md break-words text-ink dark:text-white">
                                             {{ $baris['txn_name'] }}
                                             @if ((int) ($baris['jumlah_lama'] ?? 1) > 1 || (int) ($baris['jumlah_baru'] ?? 1) > 1)
                                                 <span class="block text-xs text-muted">{{ $baris['jumlah_lama'] ?? 0 }} → {{ $baris['jumlah_baru'] ?? 0 }} baris berlabel sama</span>
@@ -268,7 +265,7 @@ new class extends Component {
                                             {{ $baris['acc_baru'] ?? $baris['acc_lama'] }} / {{ $baris['lawan_baru'] ?? $baris['lawan_lama'] }}
                                         </td>
                                         @foreach (['debit', 'kredit'] as $sisi)
-                                            <td class="text-right ds-td-token">
+                                            <td class="text-right tabular-nums whitespace-nowrap">
                                                 @if ($baris['jenis'] === 'berubah' && (float) $baris[$sisi . '_lama'] !== (float) $baris[$sisi . '_baru'])
                                                     <span class="line-through text-muted">{{ $rupiah($baris[$sisi . '_lama']) }}</span><br>{{ $rupiah($baris[$sisi . '_baru']) }}
                                                 @elseif ($baris['jenis'] === 'hilang')

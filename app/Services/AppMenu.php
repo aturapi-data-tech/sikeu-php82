@@ -96,6 +96,7 @@ class AppMenu
             // ── 4. Panduan ─────────────────────────────────────────────
             $entry(['group' => 'Panduan', 'groupOrder' => 4, 'order' => 1, 'route' => 'panduan.cara-pakai', 'title' => 'Cara Pakai SIKEU', 'desc' => 'Langkah tutup bulan, aturan kunci / buka kunci berurutan, SIRUS berubah setelah dikunci, arti warna tombol, siapa boleh apa', 'izin' => null, 'badge' => '?']),
             $entry(['group' => 'Panduan', 'groupOrder' => 4, 'order' => 2, 'route' => 'panduan.istilah-keuangan', 'title' => 'Istilah Keuangan', 'desc' => 'Glosarium: debit/kredit, aset, liabilitas, ekuitas, laba rugi, akrual, istilah SIKEU - dengan contoh rumah sakit', 'izin' => null, 'badge' => '?']),
+            $entry(['group' => 'Panduan', 'groupOrder' => 4, 'order' => 3, 'route' => 'panduan.struktur-data', 'title' => 'Struktur Data', 'desc' => 'Gambar tabel SIKEU dan relasinya (foreign key) + kolom per tabel, dibaca langsung dari database', 'izin' => null, 'badge' => 'SD']),
 
             // ── 5. Sistem ──────────────────────────────────────────────
             $entry(['group' => 'Sistem', 'groupOrder' => 5, 'order' => 1, 'route' => 'sistem.identitas', 'title' => 'Identitas Instansi', 'desc' => 'Logo, nama & profil instansi (kop cetakan, halaman depan)', 'izin' => 'sistem.kelola', 'badge' => 'ID']),

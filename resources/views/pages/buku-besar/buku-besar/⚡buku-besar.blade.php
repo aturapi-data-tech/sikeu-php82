@@ -127,14 +127,26 @@ new class extends Component {
         return (string) ($baris['keterangan'] ?: BukuBesar::labelCabangBaca($baris['label_cabang'] ?? null) ?: ($baris['keterangan_jurnal'] ?? '') ?: $baris['sumber']);
     }
 
-    /** Saldo bertanda → teks "1,234.00 D" / "1,234.00 K". */
+    /**
+     * Saldo bertanda (+ debit / − kredit) → nilai MENURUT SALDO NORMAL akun: positif = di sisi normalnya,
+     * negatif = berlawanan. Dipakai supaya tampilan tidak memakai akhiran D/K yang rawan salah baca.
+     */
+    public function saldoMenurutNormal(float $saldo): float
+    {
+        return ($this->akun->saldo_normal ?? 'D') === 'K' ? -$saldo : $saldo;
+    }
+
+    /** Teks saldo menurut saldo normal: 1,234.00 — berlawanan ditulis dalam kurung (1,234.00). */
     public function teksSaldo(float $saldo): string
     {
-        if ($saldo == 0.0) {
-            return Format::uang(0);
-        }
+        $nilai = round($this->saldoMenurutNormal($saldo), 2);
 
-        return Format::uang(abs($saldo)) . ($saldo > 0 ? ' D' : ' K');
+        return $nilai < 0 ? '(' . Format::uang(-$nilai) . ')' : Format::uang($nilai);
+    }
+
+    public function saldoBerlawanan(float $saldo): bool
+    {
+        return round($this->saldoMenurutNormal($saldo), 2) < 0;
     }
 };
 ?>
@@ -206,14 +218,14 @@ new class extends Component {
                                     <th>Akun Lawan</th>
                                     <th class="text-right">Debit</th>
                                     <th class="text-right">Kredit</th>
-                                    <th class="text-right">Saldo</th>
+                                    <th class="text-right">Saldo<span class="block text-xs font-normal tracking-normal normal-case">sisi {{ ($this->akun->saldo_normal ?? 'D') === 'D' ? 'Debit' : 'Kredit' }} (normal)</span></th>
                                     <th class="ds-c">Rincian</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr class="bg-surface-card dark:bg-gray-800">
                                     <td colspan="6" class="font-medium text-ink dark:text-gray-100">Saldo awal {{ SnapshotJurnal::labelPeriode($periodeDari) }}</td>
-                                    <td class="text-right font-medium tabular-nums">{{ $this->teksSaldo($this->mutasi['saldo_awal']) }}</td>
+                                    <td class="text-right font-medium tabular-nums {{ $this->saldoBerlawanan($this->mutasi['saldo_awal']) ? 'bg-danger-soft text-fg-danger-strong' : '' }}">@if ($this->saldoBerlawanan($this->mutasi['saldo_awal']))<x-ikon-peringatan label="Saldo berlawanan dengan saldo normal" /> @endif{{ $this->teksSaldo($this->mutasi['saldo_awal']) }}</td>
                                     <td></td>
                                 </tr>
                                 @forelse ($this->mutasi['baris'] as $indeks => $baris)
@@ -224,12 +236,13 @@ new class extends Component {
                                         <td><span class="font-mono">{{ $baris['akun_lawan_id'] }}</span> {{ $baris['nama_lawan'] }}</td>
                                         <td class="text-right tabular-nums">{{ (float) $baris['debit'] != 0 ? Format::uang($baris['debit']) : '' }}</td>
                                         <td class="text-right tabular-nums">{{ (float) $baris['kredit'] != 0 ? Format::uang($baris['kredit']) : '' }}</td>
-                                        <td class="text-right tabular-nums whitespace-nowrap">{{ $this->teksSaldo($baris['saldo']) }}</td>
+                                        <td class="text-right tabular-nums whitespace-nowrap {{ $this->saldoBerlawanan($baris['saldo']) ? 'bg-danger-soft text-fg-danger-strong' : '' }}">@if ($this->saldoBerlawanan($baris['saldo']))<x-ikon-peringatan label="Saldo berlawanan dengan saldo normal" /> @endif{{ $this->teksSaldo($baris['saldo']) }}</td>
                                         <td class="ds-c">
                                             @if ($baris['sumber'] === 'SIRUS')
-                                                <x-secondary-button type="button" kecil wire:click="bukaRincian({{ $indeks }})"
-                                                    wire:loading.attr="disabled" wire:target="bukaRincian({{ $indeks }})"
-                                                    aria-label="Rincian transaksi SIRUS {{ $baris['no_jurnal'] }}"><x-ikon nama="lihat" ukuran="w-3.5 h-3.5" /> SIRUS</x-secondary-button>
+                                                {{-- ikon saja (tanpa teks): ikon lihat = buka transaksi asli SIRUS --}}
+                                                <x-icon-button color="gray" type="button" wire:click="bukaRincian({{ $indeks }})" title="Lihat transaksi asli SIRUS">
+                                                    <span class="sr-only">Rincian transaksi SIRUS {{ $baris['no_jurnal'] }}</span><x-ikon nama="lihat" />
+                                                </x-icon-button>
                                             @endif
                                         </td>
                                     </tr>
@@ -252,7 +265,7 @@ new class extends Component {
                                         <td colspan="4" class="px-3 py-3">Jumlah mutasi · saldo akhir {{ SnapshotJurnal::labelPeriode($periodeSampai) }}</td>
                                         <td class="px-3 py-3 text-right tabular-nums">{{ Format::uang(collect($this->mutasi['baris'])->sum('debit')) }}</td>
                                         <td class="px-3 py-3 text-right tabular-nums">{{ Format::uang(collect($this->mutasi['baris'])->sum('kredit')) }}</td>
-                                        <td class="px-3 py-3 text-right tabular-nums whitespace-nowrap">{{ $this->teksSaldo($this->mutasi['saldo_akhir']) }}</td>
+                                        <td class="px-3 py-3 text-right tabular-nums whitespace-nowrap {{ $this->saldoBerlawanan($this->mutasi['saldo_akhir']) ? 'bg-danger-soft text-fg-danger-strong' : '' }}">@if ($this->saldoBerlawanan($this->mutasi['saldo_akhir']))<x-ikon-peringatan label="Saldo berlawanan dengan saldo normal" /> @endif{{ $this->teksSaldo($this->mutasi['saldo_akhir']) }}</td>
                                         <td></td>
                                     </tr>
                                 </tfoot>

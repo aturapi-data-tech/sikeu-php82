@@ -52,6 +52,8 @@ Route::middleware(['auth', 'menu'])->group(function () {
     // ── PANDUAN ──
     Route::livewire('/panduan/cara-pakai', 'pages::panduan.cara-pakai.cara-pakai')
         ->name('panduan.cara-pakai');
+    Route::livewire('/panduan/struktur-data', 'pages::panduan.struktur-data.struktur-data')
+        ->name('panduan.struktur-data');
     Route::livewire('/panduan/istilah-keuangan', 'pages::panduan.istilah-keuangan.istilah-keuangan')
         ->name('panduan.istilah-keuangan');
 

@@ -106,9 +106,26 @@ new class extends Component {
         return (new BukuBesar())->rincianSirus((int) $baris['jurnal_id'], $this->akunId, (string) $baris['akun_lawan_id'], (string) $baris['cabang_kunci']);
     }
 
+    /**
+     * Saldo bertanda (+ debit / − kredit) → nilai MENURUT SALDO NORMAL akun: positif = di sisi normalnya,
+     * negatif = berlawanan. Dipakai supaya tampilan tidak memakai akhiran D/K yang rawan salah baca.
+     */
+    public function saldoMenurutNormal(float $saldo): float
+    {
+        return ($this->akun->saldo_normal ?? 'D') === 'K' ? -$saldo : $saldo;
+    }
+
+    /** Teks saldo menurut saldo normal: 1,234.00 — berlawanan ditulis dalam kurung (1,234.00). */
     public function teksSaldo(float $saldo): string
     {
-        return $saldo == 0.0 ? Format::uang(0) : Format::uang(abs($saldo)) . ($saldo > 0 ? ' D' : ' K');
+        $nilai = round($this->saldoMenurutNormal($saldo), 2);
+
+        return $nilai < 0 ? '(' . Format::uang(-$nilai) . ')' : Format::uang($nilai);
+    }
+
+    public function saldoBerlawanan(float $saldo): bool
+    {
+        return round($this->saldoMenurutNormal($saldo), 2) < 0;
     }
 
     public function keteranganBaris(array $baris): string
@@ -159,10 +176,10 @@ new class extends Component {
                         </div>
                         @php $mutasi = $this->mutasi; @endphp
                         <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                            @foreach (['Saldo awal' => $this->teksSaldo($mutasi['saldo_awal']), 'Debit' => Format::uang($mutasi['debit']), 'Kredit' => Format::uang($mutasi['kredit']), 'Saldo akhir' => $this->teksSaldo($mutasi['saldo_akhir'])] as $judul => $nilai)
-                                <div class="px-3 py-2 border rounded-lg bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
-                                    <p class="text-xs text-muted dark:text-gray-400">{{ $judul }}</p>
-                                    <p class="text-sm font-semibold tabular-nums text-ink dark:text-gray-100 whitespace-nowrap">{{ $nilai }}</p>
+                            @foreach (['Saldo awal' => [$this->teksSaldo($mutasi['saldo_awal']), $this->saldoBerlawanan($mutasi['saldo_awal'])], 'Debit' => [Format::uang($mutasi['debit']), false], 'Kredit' => [Format::uang($mutasi['kredit']), false], 'Saldo akhir' => [$this->teksSaldo($mutasi['saldo_akhir']), $this->saldoBerlawanan($mutasi['saldo_akhir'])]] as $judul => [$nilai, $berlawanan])
+                                <div class="px-3 py-2 border rounded-lg {{ $berlawanan ? 'bg-danger-soft border-fg-danger-strong' : 'bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700' }}">
+                                    <p class="text-xs {{ $berlawanan ? 'text-fg-danger-strong' : 'text-muted dark:text-gray-400' }}">{{ $judul }}</p>
+                                    <p class="text-sm font-semibold tabular-nums whitespace-nowrap {{ $berlawanan ? 'text-fg-danger-strong' : 'text-ink dark:text-gray-100' }}">@if ($berlawanan)<x-ikon-peringatan label="Saldo berlawanan dengan saldo normal" /> @endif{{ $nilai }}</p>
                                 </div>
                             @endforeach
                         </div>
@@ -179,14 +196,14 @@ new class extends Component {
                                     <th>Akun Lawan</th>
                                     <th class="text-right w-36">Debit</th>
                                     <th class="text-right w-36">Kredit</th>
-                                    <th class="text-right w-40">Saldo</th>
+                                    <th class="text-right w-40">Saldo<span class="block text-xs font-normal tracking-normal normal-case">sisi {{ ($akun->saldo_normal ?? 'D') === 'D' ? 'Debit' : 'Kredit' }} (normal)</span></th>
                                     <th class="ds-c w-24">Rincian</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr class="bg-surface-card dark:bg-gray-800">
                                     <td colspan="6" class="font-medium text-ink dark:text-gray-100">Saldo awal {{ SnapshotJurnal::labelPeriode($periodeDari) }}</td>
-                                    <td class="text-right font-medium tabular-nums whitespace-nowrap">{{ $this->teksSaldo($mutasi['saldo_awal']) }}</td>
+                                    <td class="text-right font-medium tabular-nums whitespace-nowrap {{ $this->saldoBerlawanan($mutasi['saldo_awal']) ? 'bg-danger-soft text-fg-danger-strong' : '' }}">@if ($this->saldoBerlawanan($mutasi['saldo_awal']))<x-ikon-peringatan label="Saldo berlawanan dengan saldo normal" /> @endif{{ $this->teksSaldo($mutasi['saldo_awal']) }}</td>
                                     <td></td>
                                 </tr>
                                 @forelse (array_slice($mutasi['baris'], 0, 3000) as $indeks => $baris)
@@ -198,12 +215,14 @@ new class extends Component {
                                         <td><span class="font-mono">{{ $baris['akun_lawan_id'] }}</span> {{ $baris['nama_lawan'] }}</td>
                                         <td class="text-right tabular-nums">{{ (float) $baris['debit'] != 0 ? Format::uang($baris['debit']) : '' }}</td>
                                         <td class="text-right tabular-nums">{{ (float) $baris['kredit'] != 0 ? Format::uang($baris['kredit']) : '' }}</td>
-                                        <td class="text-right tabular-nums whitespace-nowrap">{{ $this->teksSaldo($baris['saldo']) }}</td>
+                                        <td class="text-right tabular-nums whitespace-nowrap {{ $this->saldoBerlawanan($baris['saldo']) ? 'bg-danger-soft text-fg-danger-strong' : '' }}">@if ($this->saldoBerlawanan($baris['saldo']))<x-ikon-peringatan label="Saldo berlawanan dengan saldo normal" /> @endif{{ $this->teksSaldo($baris['saldo']) }}</td>
                                         <td class="ds-c">
                                             @if ($baris['sumber'] === 'SIRUS')
-                                                <x-outline-button kecil wire:click="toggleRincian({{ $indeks }})" aria-expanded="{{ $rincianIndeks === $indeks ? 'true' : 'false' }}" title="Rincian transaksi SIRUS">
-                                                    <x-ikon nama="rinci" class="transition-transform motion-reduce:transition-none {{ $rincianIndeks === $indeks ? 'rotate-90' : '' }}" /> SIRUS
-                                                </x-outline-button>
+                                                {{-- ikon saja (tanpa teks): ikon lihat = buka transaksi asli SIRUS; hijau saat rinciannya terbuka --}}
+                                                <x-icon-button :color="$rincianIndeks === $indeks ? 'green' : 'gray'" type="button" wire:click="toggleRincian({{ $indeks }})"
+                                                    aria-expanded="{{ $rincianIndeks === $indeks ? 'true' : 'false' }}" title="{{ $rincianIndeks === $indeks ? 'Tutup' : 'Lihat' }} transaksi asli SIRUS">
+                                                    <span class="sr-only">Rincian transaksi SIRUS {{ $baris['no_jurnal'] }}</span><x-ikon nama="lihat" />
+                                                </x-icon-button>
                                             @else
                                                 <span class="text-xs text-muted">{{ $baris['sumber'] }}</span>
                                             @endif
