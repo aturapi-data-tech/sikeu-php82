@@ -45,8 +45,8 @@ new class extends Component {
 
     {{-- Judul di topbar (sebelah logo) — pola master --}}
     <x-page-title
-        title="Dashboard"
-        subtitle="Pusat menu aplikasi — Role Aktif : {{ auth()->user()->getRoleNames()->implode(', ') }}" />
+        title="Beranda"
+        subtitle="Pusat menu aplikasi — Peran aktif: {{ auth()->user()->getRoleNames()->implode(', ') }}" />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-900">
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6">

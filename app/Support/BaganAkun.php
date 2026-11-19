@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
  * Aturan bersama Bagan Akun (sikeumst_akuns) & Peta Akun SIRUS (sikeumst_peta_akun_sirus).
  *
  * Format kode (jumlah tingkat, digit, pemisah, nomor kontra) TIDAK di sini — dari pengaturan, lihat
- * App\Support\FormatKodeAkun. Tingkat 1 = kelompok (dibuat di Master › Kelompok Akun). Di bawahnya akun dibuat
+ * App\Support\FormatKodeAkun. Tingkat 1 = kelompok (dibuat di Data Induk › Kelompok Akun). Di bawahnya akun dibuat
  * dari Bagan Akun di bawah header mana pun; tingkat terakhir selalu Detail, tingkat di atasnya boleh Header/Detail.
  * Hanya akun Detail yang boleh dijurnal.
  */

@@ -19,7 +19,7 @@ Oracle 10g (yajra/laravel-oci8), Tailwind + Alpine, Spatie Permission.
    dengan bagian periksa / verifikasi / rollback. Konsep buku besar ada di kepala file 01.
    **Bagan akun & peta akun SIRUS** (02_, 03_) DIBANGKITKAN dari `database/sql/tools/bagan_akun.php` —
    jangan edit SQL-nya langsung. Generator menolak akun SIRUS yang belum dipetakan / peta ke akun header.
-   Itu hanya untuk PASANG AWAL: sesudahnya sumber data = tabel, diubah lewat layar Master › Bagan Akun &
+   Itu hanya untuk PASANG AWAL: sesudahnya sumber data = tabel, diubah lewat layar Data Induk › Bagan Akun &
    Peta Akun SIRUS (gate `akun.kelola`, aturan di `App\Support\BaganAkun`, setiap perubahan ke sikeutxn_audit_logs).
 4. **Mesin jurnal tetap satu, di SIRUS** (`App\Support\Keuangan\Jurnal` + `JurnalCabang`, lihat
    `docs/jurnal-keuangan.md` di repo SIRUS). Jangan menyalin katalog cabangnya ke SIKEU. API mengirim per cabang
@@ -35,7 +35,7 @@ Oracle 10g (yajra/laravel-oci8), Tailwind + Alpine, Spatie Permission.
 7. **Hal yang beda antar-instansi = pengaturan, bukan konstanta** (tabel `sikeumst_pengaturans`, DDL 04, kelas
    `App\Support\Pengaturan`). Format kode akun dibaca lewat `App\Support\FormatKodeAkun` — jangan menulis
    jumlah tingkat/digit/pemisah/nomor kontra di kode.
-8. **Buku besar** (`App\Support\BukuBesar`, layar Buku Besar › Periode & Posting / Neraca Saldo / Buku Besar):
+8. **Buku besar** (`App\Support\BukuBesar`, layar Pembukuan › Periode & Pengesahan / Neraca Saldo / Buku Besar):
    versi snapshot yang DISAHKAN per periode diposting jadi satu jurnal per hari (sumber SIRUS), baris = Σ per
    (tanggal, cabang, akun, lawan, sisi) lewat peta akun; posting ulang selama periode Buka → jurnal lama status B.
    Saldo = Σ jurnal status P (akun L hanya sejak Januari). Kunci berurutan dari bulan terlama; buka kunci hanya

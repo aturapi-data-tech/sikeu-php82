@@ -298,7 +298,7 @@ new class extends Component {
             @if (!$this->periodeAwal)
                 <div class="p-6 text-center border border-dashed rounded-2xl border-hairline bg-canvas dark:bg-gray-800 dark:border-gray-700">
                     Tahun buku {{ $tahun }} belum dibuka.
-                    <a href="{{ route('buku-besar.periode', ['tahun' => $tahun]) }}" wire:navigate class="font-medium underline">Buka di Periode & Posting</a>.
+                    <a href="{{ route('buku-besar.periode', ['tahun' => $tahun]) }}" wire:navigate class="font-medium underline">Buka di Periode & Pengesahan</a>.
                 </div>
             @else
                 @if ($this->tahunLaluAdaJurnal)

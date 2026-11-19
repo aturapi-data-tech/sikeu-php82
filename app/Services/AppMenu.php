@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
  * AppMenu — sumber tunggal definisi menu aplikasi (dashboard + sidebar).
  *
  * Setiap entri punya 'izin' = nama permission (katalog App\Support\HakAkses) yang wajib dimiliki user, atau
- * null = semua user yang sudah login. Siapa punya izin apa diatur di Sistem › Role Control, bukan di sini.
+ * null = semua user yang sudah login. Siapa punya izin apa diatur di Sistem › Peran & Hak Akses, bukan di sini.
  *
  * - `all()`            semua entri (route yang tidak terdaftar dilewati)
  * - `forUser($user)`   entri yang boleh dilihat user
@@ -70,36 +70,35 @@ class AppMenu
     {
         return [
             // 'izin' = permission (App\Support\HakAkses::DAFTAR); null = semua user login.
+            // Urutan grup = alur kerja: pembukuan (ambil & sahkan jurnal SIRUS ada di Periode & Pengesahan) -> laporan;
+            // data induk & sistem (jarang dipakai) di bawah. Jangan menambah menu kembar untuk fungsi yang sudah ada.
 
-            // ── Master ─────────────────────────────────────────────────
-            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 0, 'route' => 'master.kelompok-akun', 'title' => 'Kelompok Akun', 'desc' => 'Setup akun Neraca & Laba Rugi per kelompok (digit pertama kode akun)', 'izin' => 'laporan.lihat', 'badge' => 'N/L']),
-            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 1, 'route' => 'master.bagan-akun', 'title' => 'Bagan Akun', 'desc' => 'Daftar akun buku besar (SAK EP): tambah, ubah, nonaktifkan akun', 'izin' => 'laporan.lihat', 'badge' => 'COA']),
-            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 3, 'route' => 'master.format-kode', 'title' => 'Format Kode Akun', 'desc' => 'Jumlah tingkat, digit per tingkat, pemisah & nomor akun kontra', 'izin' => 'laporan.lihat', 'badge' => 'FMT']),
-            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 2, 'route' => 'master.peta-akun', 'title' => 'Peta Akun SIRUS', 'desc' => 'Pasangan akun SIRUS ke akun SIKEU — posting snapshot ditolak bila ada yang belum dipetakan', 'izin' => 'laporan.lihat', 'badge' => 'MAP']),
+            // ── 1. Pembukuan ───────────────────────────────────────────
+            $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 1, 'route' => 'buku-besar.periode', 'title' => 'Periode & Pengesahan', 'desc' => 'Buka tahun buku, ambil & sahkan jurnal SIRUS ke buku besar, kunci periode', 'izin' => 'laporan.lihat', 'badge' => 'PP']),
+            $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 2, 'route' => 'cutoff.banding-versi', 'title' => 'Bandingkan Versi', 'desc' => 'Cari transaksi SIRUS yang baru, hilang, atau berubah antara dua versi jurnal yang diambil', 'izin' => 'laporan.lihat', 'badge' => 'BV']),
+            $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 3, 'route' => 'buku-besar.saldo-awal', 'title' => 'Saldo Awal', 'desc' => 'Saldo akun per 1 Januari: tarik dari SIRUS, koreksi, seimbangkan, sahkan', 'izin' => 'laporan.lihat', 'badge' => 'SA']),
+            $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 4, 'route' => 'buku-besar.jurnal-umum', 'title' => 'Jurnal Umum', 'desc' => 'Jurnal penyesuaian & koreksi: konsep, posting (wajib seimbang), batal / pembalik', 'izin' => 'laporan.lihat', 'badge' => 'JU']),
+            $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 5, 'route' => 'buku-besar.neraca-saldo', 'title' => 'Neraca Saldo', 'desc' => 'Saldo awal, mutasi & saldo akhir tiap akun per periode - cek debit = kredit', 'izin' => 'laporan.lihat', 'badge' => 'NS']),
+            $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 6, 'route' => 'buku-besar.buku-besar', 'title' => 'Buku Besar', 'desc' => 'Mutasi & saldo berjalan per akun, rinci sampai transaksi SIRUS', 'izin' => 'laporan.lihat', 'badge' => 'BB']),
 
-            // ── Cutoff Jurnal ──────────────────────────────────────────
-            $entry(['group' => 'Cutoff Jurnal', 'groupOrder' => 1, 'order' => 1, 'route' => 'cutoff.snapshot-jurnal', 'title' => 'Snapshot Jurnal', 'desc' => 'Ambil jurnal SIRUS satu bulan sebagai versi baru (cutoff) — versi lama tidak ditimpa', 'izin' => 'snapshot.ambil', 'badge' => 'SNP']),
-            $entry(['group' => 'Cutoff Jurnal', 'groupOrder' => 1, 'order' => 2, 'route' => 'cutoff.banding-versi', 'title' => 'Bandingkan Versi', 'desc' => 'Cari transaksi yang baru, hilang, atau berubah antara dua versi snapshot', 'izin' => 'laporan.lihat', 'badge' => 'DIF']),
+            // ── 2. Laporan Keuangan ────────────────────────────────────
+            $entry(['group' => 'Laporan Keuangan', 'groupOrder' => 2, 'order' => 1, 'route' => 'laporan.neraca', 'title' => 'Neraca', 'desc' => 'Laporan posisi keuangan per akhir bulan vs 1 Januari - cek Aset = Liabilitas + Ekuitas', 'izin' => 'laporan.lihat', 'badge' => 'NRC']),
+            $entry(['group' => 'Laporan Keuangan', 'groupOrder' => 2, 'order' => 2, 'route' => 'laporan.laba-rugi', 'title' => 'Laba Rugi', 'desc' => 'Laporan laba rugi bulan berjalan & kumulatif - susunan dari template laporan', 'izin' => 'laporan.lihat', 'badge' => 'LR']),
 
-            // ── Buku Besar ─────────────────────────────────────────────
-            $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 1, 'route' => 'buku-besar.periode', 'title' => 'Periode & Posting', 'desc' => 'Buka tahun buku, sahkan versi snapshot & posting ke buku besar, kunci periode', 'izin' => 'laporan.lihat', 'badge' => 'PER']),
-            $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 1.5, 'route' => 'buku-besar.saldo-awal', 'title' => 'Saldo Awal', 'desc' => 'Saldo akun per 1 Januari: tarik dari SIRUS, koreksi, seimbangkan, sahkan', 'izin' => 'laporan.lihat', 'badge' => 'SA']),
-            $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 1.7, 'route' => 'buku-besar.jurnal-umum', 'title' => 'Jurnal Umum', 'desc' => 'Jurnal penyesuaian & koreksi manual: draft, posting (wajib seimbang), batal / pembalik', 'izin' => 'laporan.lihat', 'badge' => 'JU']),
-            $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 2, 'route' => 'buku-besar.neraca-saldo', 'title' => 'Neraca Saldo', 'desc' => 'Saldo awal, mutasi & saldo akhir tiap akun per periode — cek D = K', 'izin' => 'laporan.lihat', 'badge' => 'NS']),
-            $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 3, 'route' => 'buku-besar.buku-besar', 'title' => 'Buku Besar', 'desc' => 'Mutasi & saldo berjalan per akun, rinci sampai transaksi SIRUS', 'izin' => 'laporan.lihat', 'badge' => 'BB']),
+            // ── 3. Data Induk (urutan menyiapkan) ──────────────────────
+            $entry(['group' => 'Data Induk', 'groupOrder' => 3, 'order' => 1, 'route' => 'master.format-kode', 'title' => 'Format Kode Akun', 'desc' => 'Jumlah tingkat, digit per tingkat, pemisah & nomor akun kontra', 'izin' => 'laporan.lihat', 'badge' => 'FK']),
+            $entry(['group' => 'Data Induk', 'groupOrder' => 3, 'order' => 2, 'route' => 'master.kelompok-akun', 'title' => 'Kelompok Akun', 'desc' => 'Pembagian akun Neraca & Laba Rugi per kelompok (tingkat 1 kode akun)', 'izin' => 'laporan.lihat', 'badge' => 'KA']),
+            $entry(['group' => 'Data Induk', 'groupOrder' => 3, 'order' => 3, 'route' => 'master.bagan-akun', 'title' => 'Bagan Akun', 'desc' => 'Daftar akun buku besar (SAK EP): tambah, ubah, nonaktifkan akun', 'izin' => 'laporan.lihat', 'badge' => 'BA']),
+            $entry(['group' => 'Data Induk', 'groupOrder' => 3, 'order' => 4, 'route' => 'master.peta-akun', 'title' => 'Peta Akun SIRUS', 'desc' => 'Pasangan akun SIRUS ke akun SIKEU - pengesahan ditolak bila ada yang belum dipetakan', 'izin' => 'laporan.lihat', 'badge' => 'PA']),
 
-            // ── Laporan ────────────────────────────────────────────────
-            $entry(['group' => 'Laporan', 'groupOrder' => 3, 'order' => 2, 'route' => 'laporan.neraca', 'title' => 'Neraca', 'desc' => 'Laporan posisi keuangan per akhir bulan vs 1 Januari — cek Aset = Liabilitas + Ekuitas', 'izin' => 'laporan.lihat', 'badge' => 'NRC']),
-            $entry(['group' => 'Laporan', 'groupOrder' => 3, 'order' => 1, 'route' => 'laporan.laba-rugi', 'title' => 'Laba Rugi', 'desc' => 'Laporan laba rugi bulan berjalan & kumulatif — susunan dari template laporan', 'izin' => 'laporan.lihat', 'badge' => 'L/R']),
+            // ── 4. Panduan ─────────────────────────────────────────────
+            $entry(['group' => 'Panduan', 'groupOrder' => 4, 'order' => 1, 'route' => 'panduan.istilah-keuangan', 'title' => 'Istilah Keuangan', 'desc' => 'Glosarium: debit/kredit, aset, liabilitas, ekuitas, laba rugi, akrual, istilah SIKEU - dengan contoh rumah sakit', 'izin' => null, 'badge' => '?']),
 
-            // ── Panduan ────────────────────────────────────────────────
-            $entry(['group' => 'Panduan', 'groupOrder' => 90, 'order' => 1, 'route' => 'panduan.istilah-keuangan', 'title' => 'Istilah Keuangan', 'desc' => 'Glosarium: debit/kredit, aset, liabilitas, ekuitas, laba rugi, akrual, istilah SIKEU — dengan contoh rumah sakit', 'izin' => null, 'badge' => '?']),
-
-            // ── Sistem ─────────────────────────────────────────────────
-            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 0, 'route' => 'sistem.identitas', 'title' => 'Identitas Instansi', 'desc' => 'Logo, nama & profil instansi (kop cetakan, halaman depan)', 'izin' => 'sistem.kelola', 'badge' => 'ID']),
-            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 1, 'route' => 'sistem.user-control', 'title' => 'User Control', 'desc' => 'Kelola user login, role & tanda tangan', 'izin' => 'sistem.kelola', 'badge' => 'USR']),
-            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 2, 'route' => 'sistem.role-control', 'title' => 'Role Control', 'desc' => 'Kelola role & permission', 'izin' => 'sistem.kelola', 'badge' => 'ROL']),
-            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 3, 'route' => 'sistem.sambungan-sirus', 'title' => 'Sambungan SIRUS', 'desc' => 'Uji login API SIRUS (JWT), katalog cabang jurnal & bagan akun', 'izin' => 'sistem.kelola', 'badge' => 'DB']),
+            // ── 5. Sistem ──────────────────────────────────────────────
+            $entry(['group' => 'Sistem', 'groupOrder' => 5, 'order' => 1, 'route' => 'sistem.identitas', 'title' => 'Identitas Instansi', 'desc' => 'Logo, nama & profil instansi (kop cetakan, halaman depan)', 'izin' => 'sistem.kelola', 'badge' => 'ID']),
+            $entry(['group' => 'Sistem', 'groupOrder' => 5, 'order' => 2, 'route' => 'sistem.user-control', 'title' => 'Pengguna', 'desc' => 'Kelola akun login pengguna, peran & tanda tangan', 'izin' => 'sistem.kelola', 'badge' => 'PGN']),
+            $entry(['group' => 'Sistem', 'groupOrder' => 5, 'order' => 3, 'route' => 'sistem.role-control', 'title' => 'Peran & Hak Akses', 'desc' => 'Kelola peran (role) & hak akses yang dicentang per peran', 'izin' => 'sistem.kelola', 'badge' => 'HAK']),
+            $entry(['group' => 'Sistem', 'groupOrder' => 5, 'order' => 4, 'route' => 'sistem.sambungan-sirus', 'title' => 'Sambungan SIRUS', 'desc' => 'Uji sambungan API SIRUS: login token, katalog cabang jurnal & bagan akun', 'izin' => 'sistem.kelola', 'badge' => 'API']),
         ];
     }
 }

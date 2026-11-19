@@ -165,7 +165,7 @@ new class extends Component {
         <div class="px-6 pt-2 pb-6 space-y-4">
 
             <div class="px-4 py-3 text-sm rounded-xl bg-info-tint text-info-deep dark:bg-blue-900/30 dark:text-blue-200">
-                Tingkat 1 = kode kelompok (Master › Kelompok Akun). Tingkat terakhir selalu akun <b>Detail</b> yang dijurnal;
+                Tingkat 1 = kode kelompok (Data Induk › Kelompok Akun). Tingkat terakhir selalu akun <b>Detail</b> yang dijurnal;
                 tingkat di antaranya boleh Header atau Detail. Format hanya bisa diganti bila semua akun yang sudah ada tetap cocok —
                 kode akun tidak pernah diubah otomatis. Contoh: menambah tingkat di bawah selalu boleh, mengubah digit tingkat yang sudah terisi tidak.
             </div>

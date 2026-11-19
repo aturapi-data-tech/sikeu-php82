@@ -3,10 +3,10 @@
         <div class="flex items-center gap-2 shrink-0">
             {{-- TOP NAV (desktop only) --}}
             <nav class="items-center hidden gap-1 mr-2 lg:flex">
-                {{-- Dashboard (active) --}}
+                {{-- Beranda (route dashboard) --}}
                 <a href="{{ route('dashboard') }}" wire:navigate
                     class="px-3 py-2 text-sm font-medium transition-colors duration-200 rounded-md text-brand-green bg-brand-green/10 dark:text-brand-lime dark:bg-brand-lime/15">
-                    Dashboard
+                    Beranda
                 </a>
             </nav>
 

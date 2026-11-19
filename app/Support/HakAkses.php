@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * KATALOG HAK AKSES (permission Spatie) — siapa boleh apa diatur di Sistem › Role Control dengan mencentang
+ * KATALOG HAK AKSES (permission Spatie) — siapa boleh apa diatur di Sistem › Peran & Hak Akses dengan mencentang
  * permission per role, BUKAN dengan daftar nama role di kode. Dengan begitu instansi lain bebas memakai nama
  * jabatannya sendiri.
  *

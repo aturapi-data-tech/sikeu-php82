@@ -22,7 +22,7 @@ Glosarium untuk pemakai (istilah + contoh RS) ada di layar **Panduan › Istilah
 | Hal | Acuan | Catatan untuk SIKEU |
 |---|---|---|
 | Kerangka utama | **SAK EP** (Entitas Privat, berlaku 1 Jan 2025, pengganti SAK ETAP; diturunkan dari IFRS for SMEs) | Bagan akun `02_bagan_akun.sql` disusun untuk ini |
-| Badan hukum **yayasan / nirlaba** | Penyajian nirlaba (ISAK 35 untuk SAK umum; pastikan padanannya di SAK EP dengan KAP) | Cukup ganti kelompok 3 jadi **ASET NETO** (tanpa / dengan pembatasan) di Master › Kelompok Akun; akun lain tetap |
+| Badan hukum **yayasan / nirlaba** | Penyajian nirlaba (ISAK 35 untuk SAK umum; pastikan padanannya di SAK EP dengan KAP) | Cukup ganti kelompok 3 jadi **ASET NETO** (tanpa / dengan pembatasan) di Data Induk › Kelompok Akun; akun lain tetap |
 | Badan hukum **PT** | SAK EP penuh | Ekuitas = modal + saldo laba |
 | Pajak | UU PPh (tarif badan 22%), UU HPP: jasa pelayanan kesehatan medis dibebaskan PPN → PPN masukan umumnya **tidak dapat dikreditkan** (masuk biaya perolehan) | Akun `5.1.01.004 PPN Pembelian Tidak Dapat Dikreditkan` |
 | Penyusutan fiskal | PMK 96/PMK.03/2009 (kelompok 1–4, bangunan) | **Fiskal ≠ komersial** — lihat §4.6 |
@@ -37,8 +37,8 @@ pendamping = Laporan Perubahan Ekuitas (bukan Aset Neto).
 
 | # | Laporan | Sumber angka di SIKEU | Status |
 |---|---|---|---|
-| 1 | Laporan Posisi Keuangan (Neraca) | saldo akhir akun kelompok N (`jenis_laporan='N'`) + laba berjalan | **ADA** — `LaporanKeuangan::neraca`, layar Laporan › Neraca, template DDL 07 (kode baris `TA` & `TLE` dipakai cek Aset = Liabilitas + Ekuitas) |
-| 2 | Laporan Laba Rugi (dan Penghasilan Komprehensif Lain) | mutasi akun kelompok L periode & YTD | **ADA** — `LaporanKeuangan::labaRugi`, layar Laporan › Laba Rugi, template DDL 05 |
+| 1 | Laporan Posisi Keuangan (Neraca) | saldo akhir akun kelompok N (`jenis_laporan='N'`) + laba berjalan | **ADA** — `LaporanKeuangan::neraca`, layar Laporan Keuangan › Neraca, template DDL 07 (kode baris `TA` & `TLE` dipakai cek Aset = Liabilitas + Ekuitas) |
+| 2 | Laporan Laba Rugi (dan Penghasilan Komprehensif Lain) | mutasi akun kelompok L periode & YTD | **ADA** — `LaporanKeuangan::labaRugi`, layar Laporan Keuangan › Laba Rugi, template DDL 05 |
 | 3 | Laporan Perubahan Ekuitas (yayasan: Perubahan Aset Neto) | saldo awal ekuitas + laba bersih + setoran/dividen | BELUM — **template belum ada di `sikeumst_lap_hdrs`** |
 | 4 | Laporan Arus Kas | metode langsung: baris jurnal akun kas × `akun_lawan_id` × `kategori_arus_kas` lawan | BELUM (struktur siap) |
 | 5 | Catatan atas Laporan Keuangan (CALK) | kebijakan akuntansi + rincian pos (aging piutang, aset tetap, persediaan) | BELUM — teks di pengaturan + tabel rincian |
@@ -160,9 +160,9 @@ Kode: `SnapshotJurnal`, `BukuBesar`, `BaganAkun`, `FormatKodeAkun`. Detail tekni
 | Prioritas | Butuh | Alasan |
 |---|---|---|
 | 1 | ~~Laporan Laba Rugi~~ SELESAI; sisa: **form Susunan Laporan** (ubah baris template tanpa SQL) | universal |
-| 2 | ~~Saldo awal~~ SELESAI (`App\Support\SaldoAwal`, layar Buku Besar › Saldo Awal, API SIRUS `/saldo-awal/{tahun}`) | syarat Neraca |
+| 2 | ~~Saldo awal~~ SELESAI (`App\Support\SaldoAwal`, layar Pembukuan › Saldo Awal, API SIRUS `/saldo-awal/{tahun}`) | syarat Neraca |
 | 3 | ~~Neraca~~ SELESAI; sisa **Laporan Perubahan Ekuitas** (PT; jenis baru di `sikeumst_lap_hdrs`) | set laporan SAK EP |
-| 4 | ~~Jurnal Umum / Penyesuaian~~ SELESAI (`App\Support\JurnalUmum`, layar Buku Besar › Jurnal Umum; draft `jurnal.entri`, posting/batal `jurnal.posting`; kunci periode ditolak bila ada draft) | tempat semua koreksi §5.6 |
+| 4 | ~~Jurnal Umum / Penyesuaian~~ SELESAI (`App\Support\JurnalUmum`, layar Pembukuan › Jurnal Umum; draft `jurnal.entri`, posting/batal `jurnal.posting`; kunci periode ditolak bila ada draft) | tempat semua koreksi §5.6 |
 | 5 | **Arus Kas** metode langsung (kas × lawan × kategori) + tidak langsung | set laporan |
 | 6 | API SIRUS **klaim BPJS** + **RI berjalan** → penyesuaian otomatis §4.1–4.2 | celah terbesar di angka pendapatan & piutang |
 | 7 | Jurnal **jasa medis dari SIAP** §4.3 | beban pokok yang hilang |

@@ -147,7 +147,7 @@ new class extends Component {
             @if ($this->versiList->count() < 2)
                 <div class="p-4 text-sm border rounded-xl border-hairline bg-surface-card text-body dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
                     Periode ini baru punya {{ $this->versiList->count() }} versi selesai. Ambil satu versi lagi di
-                    <a href="{{ route('cutoff.snapshot-jurnal') }}" wire:navigate class="font-semibold underline">Snapshot Jurnal</a> untuk bisa membandingkan.
+                    <a href="{{ route('buku-besar.periode', ['tahun' => substr($periode, 0, 4)]) }}" wire:navigate class="font-semibold underline">Periode &amp; Pengesahan</a> (tombol "+ Ambil versi baru" di baris bulannya) untuk bisa membandingkan.
                 </div>
             @elseif ($this->hasil === null)
                 <div class="p-4 text-sm border rounded-xl border-hairline bg-surface-card text-body dark:bg-gray-800 dark:border-gray-700">

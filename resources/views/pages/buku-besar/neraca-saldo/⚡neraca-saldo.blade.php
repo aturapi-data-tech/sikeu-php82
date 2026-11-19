@@ -235,7 +235,7 @@ new class extends Component {
                                     <td colspan="8" class="px-6 py-10 text-center text-muted dark:text-gray-400">
                                         @if ($this->hasil['akun'] === [])
                                             Belum ada jurnal terposting sampai periode {{ SnapshotJurnal::labelPeriode($periode) }}.
-                                            <a href="{{ route('buku-besar.periode', ['tahun' => substr($periode, 0, 4)]) }}" wire:navigate class="font-medium underline">Sahkan & posting di Periode & Posting</a>.
+                                            <a href="{{ route('buku-besar.periode', ['tahun' => substr($periode, 0, 4)]) }}" wire:navigate class="font-medium underline">Sahkan & posting di Periode & Pengesahan</a>.
                                         @else
                                             Tidak ada akun yang cocok dengan filter — <button type="button" wire:click="resetFilters" class="underline">reset filter</button>.
                                         @endif
@@ -271,7 +271,7 @@ new class extends Component {
             <p class="mt-2 text-xs text-muted dark:text-gray-400">
                 Klik kode / nama akun untuk melihat mutasinya tanpa meninggalkan halaman ini.
                 Sel merah bertanda segitiga peringatan = saldo berlawanan dengan saldo normal akunnya (mis. piutang / persediaan bersaldo kredit) — periksa sebelum mengunci periode; klik badge "saldo berlawanan" untuk menyaringnya.
-                Saldo awal Januari berasal dari Buku Besar › Saldo Awal; tanpa saldo awal sah, saldo akun Neraca = akumulasi mutasi yang sudah diposting.
+                Saldo awal Januari berasal dari Pembukuan › Saldo Awal; tanpa saldo awal sah, saldo akun Neraca = akumulasi mutasi yang sudah diposting.
             </p>
         </div>
     </div>

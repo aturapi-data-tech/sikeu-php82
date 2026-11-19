@@ -14,7 +14,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
  * Aturan:
  *   - Akun baru di bawah header mana pun selain tingkat terakhir; format kode dari pengaturan (FormatKodeAkun).
  *     Tingkat terakhir selalu Detail, tingkat di atasnya boleh pilih Header/Detail.
- *   - Tingkat 1 = kelompok: ditambah/dihapus di Master › Kelompok Akun; ubah namanya di sini ikut ke kelompok.
+ *   - Tingkat 1 = kelompok: ditambah/dihapus di Data Induk › Kelompok Akun; ubah namanya di sini ikut ke kelompok.
  *   - Kode, induk, tipe tidak bisa diubah setelah dibuat (kode dipakai FK jurnal/peta/saldo).
  *   - Akun yang sudah dijurnal / bersaldo: saldo normal & sifat kas dikunci.
  *   - Nonaktif detail ditolak bila masih jadi tujuan peta SIRUS; nonaktif header ditolak bila masih punya anak aktif.
@@ -272,7 +272,7 @@ new class extends Component {
         $this->wajibBolehKelola();
         $akun = DB::table('sikeumst_akuns')->where('akun_id', $akunId)->first();
         if (!$akun || (int) $akun->tingkat < 2) {
-            $this->dispatch('toast', type: 'error', message: 'Kelompok diatur di Master › Kelompok Akun.');
+            $this->dispatch('toast', type: 'error', message: 'Kelompok diatur di Data Induk › Kelompok Akun.');
             return;
         }
 
@@ -308,7 +308,7 @@ new class extends Component {
         $this->wajibBolehKelola();
         $akun = DB::table('sikeumst_akuns')->where('akun_id', $akunId)->first();
         if (!$akun || (int) $akun->tingkat < 2) {
-            $this->dispatch('toast', type: 'error', message: 'Kelompok dihapus lewat Master › Kelompok Akun.');
+            $this->dispatch('toast', type: 'error', message: 'Kelompok dihapus lewat Data Induk › Kelompok Akun.');
             return;
         }
         if (DB::table('sikeumst_akuns')->where('induk_id', $akunId)->exists()) {

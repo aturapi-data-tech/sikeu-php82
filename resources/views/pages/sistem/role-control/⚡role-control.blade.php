@@ -87,7 +87,7 @@ new class extends Component {
 <div>
 
     <x-page-title
-        title="Role Control"
+        title="Peran & Hak Akses"
         subtitle="Kelola role & permission — role menentukan menu dan aksi yang boleh diakses user" />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-900">

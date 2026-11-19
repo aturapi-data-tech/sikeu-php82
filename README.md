@@ -39,7 +39,7 @@ Mesin jurnal tetap satu, di SIRUS (`App\Support\Keuangan\Jurnal` + `JurnalCabang
 
 ### Cutoff & pembanding versi
 
-- **Snapshot Jurnal** — tiap "Ambil dari SIRUS" menyimpan jurnal satu bulan sebagai **versi baru**
+- **Pembukuan › Periode & Pengesahan** — tiap "Ambil Snapshot" / "Proses Setahun" menyimpan jurnal satu bulan sebagai **versi baru**
   (`sikeutxn_snap_hdrs` / `_cabangs` / `_dtls`); versi lama tidak pernah ditimpa. Checksum per cabang & per versi.
 - **Bandingkan Versi** — dua versi dibandingkan sampai tingkat transaksi: **baru**, **hilang**, **berubah**
   (nominal / tanggal / akun / shift). Hanya cabang yang checksum-nya beda yang dibandingkan per baris.
@@ -51,7 +51,7 @@ Tabel milik SIKEU berawalan `SIKEUMST_` (master) dan `SIKEUTXN_` (transaksi).
 
 ## Role
 
-Hak akses = **permission** yang dicentang per role di *Sistem › Role Control* (katalog & keterangan di
+Hak akses = **permission** yang dicentang per role di *Sistem › Peran & Hak Akses* (katalog & keterangan di
 `app/Support/HakAkses.php`). Menu (`app/Services/AppMenu.php`, kolom `izin`) dan aksi (`@can` / `->can()`) membaca
 permission, bukan nama role — instansi lain bebas memakai nama jabatannya sendiri. Role `Admin` selalu boleh semua.
 Tabel di bawah = pembagian awal dari migrasi `2026_11_19_130000_hak_akses_awal_sikeu`.

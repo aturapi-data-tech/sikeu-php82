@@ -42,8 +42,6 @@ Route::middleware(['auth', 'menu'])->group(function () {
         ->name('laporan.neraca');
 
     // ── CUTOFF JURNAL ──
-    Route::livewire('/cutoff/snapshot-jurnal', 'pages::cutoff.snapshot-jurnal.snapshot-jurnal')
-        ->name('cutoff.snapshot-jurnal');
     Route::livewire('/cutoff/banding-versi', 'pages::cutoff.banding-versi.banding-versi')
         ->name('cutoff.banding-versi');
 

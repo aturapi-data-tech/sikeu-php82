@@ -58,7 +58,7 @@ class SaldoAwal
     {
         $periode = DB::table('sikeumst_periodes')->where('periode', self::periodeAwal($tahun))->lockForUpdate()->first();
         if (!$periode) {
-            throw new RuntimeException("Tahun buku {$tahun} belum dibuka — buka di Periode & Posting.");
+            throw new RuntimeException("Tahun buku {$tahun} belum dibuka — buka di Periode & Pengesahan.");
         }
         if ($periode->status !== BukuBesar::STATUS_BUKA) {
             throw new RuntimeException('Periode ' . SnapshotJurnal::labelPeriode(self::periodeAwal($tahun)) . ' sudah dikunci — saldo awal tidak bisa diubah.');

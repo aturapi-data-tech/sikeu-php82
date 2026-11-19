@@ -109,7 +109,7 @@ new class extends Component {
                 @if ($this->periodeBelumPosting !== [])
                     <div role="status" class="px-4 py-2 text-sm rounded-lg bg-warning-soft text-fg-warning">
                         Belum diposting: {{ implode(', ', $this->periodeBelumPosting) }} — kolom Januari s/d {{ SnapshotJurnal::labelPeriode($periode) }} belum lengkap.
-                        <a href="{{ route('buku-besar.periode', ['tahun' => substr($periode, 0, 4)]) }}" wire:navigate class="font-medium underline">Periode & Posting</a>
+                        <a href="{{ route('buku-besar.periode', ['tahun' => substr($periode, 0, 4)]) }}" wire:navigate class="font-medium underline">Periode & Pengesahan</a>
                     </div>
                 @endif
                 @if (($pemeriksaan['yatim'] ?? []) !== [])

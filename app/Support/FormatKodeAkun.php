@@ -5,7 +5,7 @@ namespace App\Support;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Format kode akun — dari pengaturan (Master › Format Kode Akun), bukan hardcode.
+ * Format kode akun — dari pengaturan (Data Induk › Format Kode Akun), bukan hardcode.
  *
  *   akun.digit_per_tingkat "1,1,2,3"  -> 4 tingkat; kode tingkat n = kode induk + pemisah + n-digit angka
  *   akun.pemisah           "." / "-" / ""

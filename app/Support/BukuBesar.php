@@ -66,7 +66,7 @@ class BukuBesar
     }
 
     /**
-     * Ringkasan 12 periode satu tahun untuk layar Periode & Posting.
+     * Ringkasan 12 periode satu tahun untuk layar Periode & Pengesahan.
      * @return array<int, array<string, mixed>>
      */
     public function periodeList(int $tahun): array
@@ -76,7 +76,7 @@ class BukuBesar
             ->where('p.tahun', $tahun)->orderBy('p.periode')
             ->get(['p.periode', 'p.bulan', 'p.status', 'p.snap_id_sah', 'p.dikunci_at', 'p.dibuka_at', 'p.alasan_buka', 's.versi as versi_sah']);
         $snapshotList = DB::table('sikeutxn_snap_hdrs')->where('periode', 'like', $tahun . '%')->where('status', 'S')
-            ->orderBy('versi')->get(['snap_id', 'periode', 'versi', 'jumlah_baris', 'total_debit', 'selesai_at'])->groupBy('periode');
+            ->orderBy('versi')->get(['snap_id', 'periode', 'versi', 'jumlah_baris', 'total_debit', 'checksum', 'selesai_at'])->groupBy('periode');
         $jurnalList = DB::table('sikeutxn_jurnal_hdrs')->where('periode', 'like', $tahun . '%')->where('status', 'P')
             ->groupBy('periode', 'sumber')
             ->selectRaw('periode, sumber, COUNT(*) AS jumlah, SUM(total_debit) AS debit, SUM(total_kredit) AS kredit, MAX(diposting_at) AS terakhir')
@@ -142,7 +142,7 @@ class BukuBesar
         $belumSiap = $this->akunBelumSiap($snapId);
         if ($belumSiap !== []) {
             throw new RuntimeException('Akun SIRUS belum dipetakan ke akun Detail aktif: ' . implode(', ', array_slice($belumSiap, 0, 10))
-                . (count($belumSiap) > 10 ? ' (+' . (count($belumSiap) - 10) . ' lagi)' : '') . '. Lengkapi di Master › Peta Akun SIRUS.');
+                . (count($belumSiap) > 10 ? ' (+' . (count($belumSiap) - 10) . ' lagi)' : '') . '. Lengkapi di Data Induk › Peta Akun SIRUS.');
         }
 
         return DB::transaction(function () use ($snapshot, $periode, $userId) {

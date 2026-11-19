@@ -336,7 +336,7 @@ new class extends Component {
 <div>
 
     <x-page-title
-        title="Periode & Posting"
+        title="Periode & Pengesahan"
         subtitle="Sahkan versi snapshot SIRUS per bulan, posting ke buku besar, lalu kunci periode yang sudah diperiksa" />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-surface-soft dark:bg-gray-900">
@@ -549,7 +549,9 @@ new class extends Component {
                 @if ($barisPosting)
                     <x-border-form title="Pilih Versi Snapshot">
                         <div class="space-y-2">
-                            @foreach (array_reverse($barisPosting['versi_list']) as $versi)
+                            @php $versiUrut = $barisPosting['versi_list']; @endphp
+                            @foreach (array_reverse($versiUrut, true) as $indeksVersi => $versi)
+                                @php $versiSebelum = $versiUrut[$indeksVersi - 1] ?? null; @endphp
                                 <label wire:key="versi-{{ $versi['snap_id'] }}"
                                     class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer border-hairline dark:border-gray-700 has-[:checked]:border-brand-green has-[:checked]:bg-surface-strong dark:has-[:checked]:border-brand-lime">
                                     <input type="radio" wire:model.live="snapIdPilih" value="{{ $versi['snap_id'] }}" class="text-brand-green focus:ring-brand-green">
@@ -561,6 +563,14 @@ new class extends Component {
                                         <span class="block text-xs text-muted dark:text-gray-400">
                                             diambil {{ Format::waktu($versi['selesai_at']) }} · {{ number_format((int) $versi['jumlah_baris'], 0, ',', '.') }} baris · D = K Rp {{ Format::uang($versi['total_debit']) }}
                                         </span>
+                                        @if ($versiSebelum)
+                                            @if ($versiSebelum['checksum'] === $versi['checksum'])
+                                                <span class="block text-xs font-medium text-fg-success-strong">Isi sama persis dengan versi {{ $versiSebelum['versi'] }} — tidak ada transaksi berubah.</span>
+                                            @else
+                                                <a href="{{ route('cutoff.banding-versi', ['periode' => $periodePosting, 'lama' => $versiSebelum['snap_id'], 'baru' => $versi['snap_id']]) }}" wire:navigate
+                                                    class="block text-xs font-medium text-fg-warning hover:underline">Berbeda dengan versi {{ $versiSebelum['versi'] }} — lihat transaksi yang berubah</a>
+                                            @endif
+                                        @endif
                                     </span>
                                 </label>
                             @endforeach
