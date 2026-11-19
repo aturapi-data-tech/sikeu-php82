@@ -11,6 +11,7 @@ use DateTimeInterface;
  *   bulan         → mm/yyyy               (10/2026)
  *   tanggal+waktu → dd/mm/yyyy hh24:mi:ss (08/10/2026 15:42:07)
  *   jam saja      → hh24:mi               (07:05) — jam masuk/pulang absensi
+ *   uang          → 1.234.567,89 (pemisah ribuan titik, desimal koma; 0 tampil 0,00)
  *
  * Nilai kosong → '' (tampilan memutuskan sendiri mau '—' atau tidak).
  * Padanan Oracle: TO_CHAR(kolom, Format::ORACLE_WAKTU).
@@ -58,5 +59,11 @@ class Format
         }
 
         return ($nilai instanceof DateTimeInterface ? Carbon::instance($nilai) : Carbon::parse($nilai))->format($pola);
+    }
+
+    /** Nominal gaya Indonesia: 1.234.567,89. Nilai negatif tetap bertanda minus. */
+    public static function uang(float|int|string|null $nilai, int $desimal = 2): string
+    {
+        return number_format((float) $nilai, $desimal, ',', '.');
     }
 }

@@ -23,6 +23,14 @@ Route::middleware(['auth', 'menu'])->group(function () {
     Route::livewire('/master/format-kode', 'pages::master.format-kode.format-kode')
         ->name('master.format-kode');
 
+    // ── BUKU BESAR ──
+    Route::livewire('/buku-besar/periode', 'pages::buku-besar.periode.periode')
+        ->name('buku-besar.periode');
+    Route::livewire('/buku-besar/neraca-saldo', 'pages::buku-besar.neraca-saldo.neraca-saldo')
+        ->name('buku-besar.neraca-saldo');
+    Route::livewire('/buku-besar/buku-besar', 'pages::buku-besar.buku-besar.buku-besar')
+        ->name('buku-besar.buku-besar');
+
     // ── CUTOFF JURNAL ──
     Route::livewire('/cutoff/snapshot-jurnal', 'pages::cutoff.snapshot-jurnal.snapshot-jurnal')
         ->name('cutoff.snapshot-jurnal');

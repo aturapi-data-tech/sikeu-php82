@@ -81,6 +81,11 @@ class AppMenu
             $entry(['group' => 'Cutoff Jurnal', 'groupOrder' => 1, 'order' => 1, 'route' => 'cutoff.snapshot-jurnal', 'title' => 'Snapshot Jurnal', 'desc' => 'Ambil jurnal SIRUS satu bulan sebagai versi baru (cutoff) — versi lama tidak ditimpa', 'izin' => 'snapshot.ambil', 'badge' => 'SNP']),
             $entry(['group' => 'Cutoff Jurnal', 'groupOrder' => 1, 'order' => 2, 'route' => 'cutoff.banding-versi', 'title' => 'Bandingkan Versi', 'desc' => 'Cari transaksi yang baru, hilang, atau berubah antara dua versi snapshot', 'izin' => 'laporan.lihat', 'badge' => 'DIF']),
 
+            // ── Buku Besar ─────────────────────────────────────────────
+            $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 1, 'route' => 'buku-besar.periode', 'title' => 'Periode & Posting', 'desc' => 'Buka tahun buku, sahkan versi snapshot & posting ke buku besar, kunci periode', 'izin' => 'laporan.lihat', 'badge' => 'PER']),
+            $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 2, 'route' => 'buku-besar.neraca-saldo', 'title' => 'Neraca Saldo', 'desc' => 'Saldo awal, mutasi & saldo akhir tiap akun per periode — cek D = K', 'izin' => 'laporan.lihat', 'badge' => 'NS']),
+            $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 3, 'route' => 'buku-besar.buku-besar', 'title' => 'Buku Besar', 'desc' => 'Mutasi & saldo berjalan per akun, rinci sampai transaksi SIRUS', 'izin' => 'laporan.lihat', 'badge' => 'BB']),
+
             // ── Sistem ─────────────────────────────────────────────────
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 0, 'route' => 'sistem.identitas', 'title' => 'Identitas Instansi', 'desc' => 'Logo, nama & profil instansi (kop cetakan, halaman depan)', 'izin' => 'sistem.kelola', 'badge' => 'ID']),
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 1, 'route' => 'sistem.user-control', 'title' => 'User Control', 'desc' => 'Kelola user login, role & tanda tangan', 'izin' => 'sistem.kelola', 'badge' => 'USR']),
