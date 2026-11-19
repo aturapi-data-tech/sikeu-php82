@@ -140,18 +140,45 @@ Kode: `SnapshotJurnal`, `BukuBesar`, `BaganAkun`, `FormatKodeAkun`. Detail tekni
 
 ## 5. Alur tutup bulan (checklist)
 
-1. **Ambil snapshot** periode → **Bandingkan Versi** dengan versi sebelumnya (transaksi berubah sesudah cutoff = temuan).
-2. **Peta Akun SIRUS** status "Perlu perhatian" = 0.
+Layar: **Pembukuan › Tarik Data SIRUS** (satu-satunya tempat menarik data SIRUS). Panduan untuk pemakai yang sama isinya
+ada di **Panduan › Cara Pakai SIKEU** — ubah keduanya bersamaan.
+
+1. **Tarik dari SIRUS** (per bulan, atau *Tarik & Sahkan Setahun*) → bila sudah pernah ditarik, kolom *Versi Disahkan*
+   menandai tarikan terbaru **sama / berbeda**; berbeda → **Bandingkan Versi** (transaksi berubah sesudah cutoff = temuan).
+2. **Peta Akun SIRUS** status "Perlu perhatian" = 0 (pengesahan ditolak bila ada akun SIRUS belum dipetakan).
 3. **Sahkan & Posting** versi final.
-4. **Neraca Saldo**: D = K; tidak ada saldo merah yang tak bisa dijelaskan (kas kredit, persediaan kredit, utang debit).
+4. **Neraca Saldo**: D = K; tidak ada saldo merah bertanda peringatan yang tak bisa dijelaskan (piutang/persediaan kredit, kas
+   kredit, utang debit) — badge "saldo berlawanan" untuk menyaringnya.
 5. **Rekonsiliasi**: kas fisik & bank (rekening koran) · persediaan vs kartu stok SIRUS · piutang per mitra vs akun
    kontrol · utang supplier per PBF vs akun kontrol (temuan lama: saldo awal utang PBF 2026 akun 947,4 jt vs per
    supplier 753,8 jt) · uang muka pasien vs deposit pasien yang masih dirawat.
-6. **Jurnal penyesuaian** (sumber MANUAL, belum dibangun): pendapatan RI belum ditagih · selisih tarif BPJS · jasa medis
-   terutang (SIAP) · gaji/listrik/air terutang · penyusutan · amortisasi biaya dibayar dimuka · cadangan piutang ·
-   selisih opname persediaan.
+6. **Jurnal penyesuaian** di Pembukuan › Jurnal Umum (staf membuat draft, manajer memposting): pendapatan RI belum ditagih ·
+   selisih tarif BPJS · jasa medis terutang (SIAP) · gaji/listrik/air terutang · penyusutan · amortisasi biaya dibayar dimuka
+   · cadangan piutang · selisih opname persediaan. Kunci periode DITOLAK selama masih ada draft.
 7. Laporan bulan berjalan → review manajer keuangan → **Kunci periode**.
 8. Tutup tahun: penyesuaian akhir tahun, pajak, **jurnal PENUTUP** (akun L → saldo laba ditahan), saldo awal tahun baru.
+
+### Kunci & buka kunci — ATURAN URUTAN
+
+- **Kunci dari atas ke bawah** (bulan terlama → terbaru, lintas tahun): hanya bulan Buka terlama yang boleh dikunci, dan harus
+  sudah diposting. **Buka kunci dari bawah ke atas**: hanya bulan terkunci terakhir, alasan wajib (log audit).
+- Alasannya: saldo awal bulan N = saldo akhir bulan N−1. Mengunci N saat N−1 masih Buka, atau membuka N−1 saat N terkunci,
+  membuat laporan "final" bisa bergeser.
+- Layar menampilkan tombol yang belum gilirannya **nonaktif + alasan tertulis** ("kunci 01/2026 dulu", "02/2026 belum diposting",
+  "buka 02/2026 dulu") — jangan disembunyikan diam-diam.
+- **Bulan terkunci tetap boleh Tarik ulang** (menarik hanya menyimpan versi baru, buku tidak berubah) untuk mengecek apakah SIRUS
+  berubah sesudah tutup. Bila **berbeda**, dua jalan:
+  1. **Disarankan:** periode tetap terkunci; selisihnya dibukukan lewat **Jurnal Umum** di bulan yang masih Buka (koreksi
+     periode berjalan) — laporan yang sudah final tidak berubah.
+  2. Bila memang harus diganti: Buka Kunci (dari bulan terbaru, beralasan) → Ganti Versi → Kunci lagi berurutan.
+- Mesin (`BukuBesar::sahkanDanPosting`, `JurnalUmum`) menolak posting / jurnal baru di periode Kunci — aturan layar hanya
+  kemudahan, bukan satu-satunya penjaga.
+
+### Warna tombol di layar alur (satu aksi utama per baris)
+
+Hijau solid = **langkah berikutnya** saja (Tarik & Sahkan Setahun, Sahkan & Posting bila belum diposting, Kunci di bulan
+gilirannya) · abu = aksi rutin / alternatif (Tarik, Tarik ulang, Ganti Versi) · garis = lihat (Neraca Saldo) · kuning = peringatan
+(Buka Kunci). Ikon dari `App\Support\IkonTombol`.
 
 ---
 
@@ -160,7 +187,7 @@ Kode: `SnapshotJurnal`, `BukuBesar`, `BaganAkun`, `FormatKodeAkun`. Detail tekni
 | Prioritas | Butuh | Alasan |
 |---|---|---|
 | 1 | ~~Laporan Laba Rugi~~ SELESAI; sisa: **form Susunan Laporan** (ubah baris template tanpa SQL) | universal |
-| 2 | ~~Saldo awal~~ SELESAI (`App\Support\SaldoAwal`, layar Pembukuan › Saldo Awal, API SIRUS `/saldo-awal/{tahun}`) | syarat Neraca |
+| 2 | ~~Saldo awal~~ SELESAI — **diisi di SIKEU**, hanya tahun pertama (`pembukuan.tahun_mulai`, kini 2026); tidak lagi dari API SIRUS `/saldo-awal` (§8) | syarat Neraca |
 | 3 | ~~Neraca~~ SELESAI; sisa **Laporan Perubahan Ekuitas** (PT; jenis baru di `sikeumst_lap_hdrs`) | set laporan SAK EP |
 | 4 | ~~Jurnal Umum / Penyesuaian~~ SELESAI (`App\Support\JurnalUmum`, layar Pembukuan › Jurnal Umum; draft `jurnal.entri`, posting/batal `jurnal.posting`; kunci periode ditolak bila ada draft) | tempat semua koreksi §5.6 |
 | 5 | **Arus Kas** metode langsung (kas × lawan × kategori) + tidak langsung | set laporan |
@@ -189,7 +216,28 @@ Kode: `SnapshotJurnal`, `BukuBesar`, `BaganAkun`, `FormatKodeAkun`. Detail tekni
 
 ---
 
-## 8. Saldo awal dari SIRUS — temuan data (2026)
+## 8. Saldo awal — DITETAPKAN DI SIKEU (keputusan user 2026-11-19)
+
+- **SIKEU = sumber kebenaran keuangan; SIRUS hanya pemasok jurnal transaksi.** Saldo awal diisi di layar Saldo Awal
+  (form neraca, semua akun Detail Neraca) dari neraca penutup / audit, rekening koran, opname — BUKAN ditarik dari SIRUS.
+- **Hanya tahun pertama** (`sikeumst_pengaturans.pembukuan.tahun_mulai` = 2026). Tahun sesudahnya diteruskan otomatis
+  (Neraca Saldo kumulatif); mengisi lagi = dobel → ditolak di mesin `SaldoAwal::wajibTahunPertama()`. Tahun pertama
+  tidak bisa diubah selama ada saldo awal (draft/sah) di tahun lain, dan tidak bisa dimajukan selama ada posting sebelumnya.
+- **Bulan sebelum tahun pertama = hanya dicek** (keputusan user 11-19, opsi 1 untuk 2025): tarik & bandingkan boleh;
+  sahkan/posting, jurnal umum, dan kunci DITOLAK (`BukuBesar::wajibMulaiTahunPertama`); urutan kunci dihitung mulai tahun
+  pertama. Posting yang terlanjur dibatalkan lewat `BukuBesar::batalkanSebelumTahunMulai()` (snapshot tetap disimpan).
+- **Set Ulang tahun pertama** (`SaldoAwal::dampakSetUlang/setUlangTahunMulai`, hak `tutupBuku.jalankan`, alasan wajib):
+  MUNDUR → saldo awal tahun lain dibatalkan, posting tetap; MAJU → posting & saldo awal sebelum tahun baru dibatalkan,
+  DITOLAK bila ada bulan terkunci sebelumnya. Isian bebas tahun pertama sudah DIHAPUS (penyebab 2025 sempat terposting).
+- **Giliran kunci lintas tahun** (`BukuBesar::giliranKunci()`): bulan pertama sejak 01/tahun pertama yang belum Kunci,
+  TERMASUK tahun yang belum dibuka (tidak dilewati) → 2024 terkunci penuh dulu, baru 2025, baru 2026.
+- **Akun SIRUS "Masuk pembukuan"** (`sikeumst_peta_akun_sirus.dibukukan`, DDL 08): '0' = seluruh baris snapshot yang
+  menyentuh akun itu (kedua sisi — jurnal SIRUS berpasangan) dilewati saat posting; pemeriksaan total memakai total
+  snapshot setelah pengecualian. Untuk pekerjaan yang dikerjakan sendiri di SIKEU (HPP taksiran, aset & penyusutan,
+  kartu utang di luar SIRUS). Aturan: **diabaikan di SIRUS = wajib dicatat di SIKEU**, terutama bila lawannya Kas/Persediaan.
+  Berlaku untuk posting berikutnya (bulan terposting baru berubah setelah tarik ulang → sahkan versi baru).
+
+### Catatan lama: saldo awal SIRUS 2026 (alasan tidak dipakai)
 
 - `tktxn_saldoawalakuns` 2026 **tidak seimbang ±Rp 9,26 M** (K lebih). Penyebab: akun **L01 "Laba (Rugi)"** dipakai tutup
   buku SIRUS sebagai PENYEIMBANG (Σ D − Σ K dibawa terus), bukan laba sebenarnya; aset tetap/ekuitas lama tak lengkap.

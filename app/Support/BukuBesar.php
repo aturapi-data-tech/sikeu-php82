@@ -134,12 +134,98 @@ class BukuBesar
              ) x
              LEFT JOIN sikeumst_peta_akun_sirus p ON p.acc_id_sirus = x.acc
              LEFT JOIN sikeumst_akuns a ON a.akun_id = p.akun_id
-             WHERE x.acc IS NOT NULL AND (a.akun_id IS NULL OR a.tipe <> 'D' OR a.aktif <> '1')
+             WHERE x.acc IS NOT NULL
+               AND (p.acc_id_sirus IS NULL OR (p.dibukukan = '1' AND (a.akun_id IS NULL OR a.tipe <> 'D' OR a.aktif <> '1')))
              ORDER BY x.acc",
             [$snapId, $snapId]
         );
 
         return array_map(fn ($row) => (string) $row->acc, $rows);
+    }
+
+    /**
+     * Bulan sebelum tahun pertama SIKEU (pengaturan pembukuan.tahun_mulai) TIDAK boleh dibukukan: saldonya akan ikut
+     * terbawa ke tahun pertama padahal saldo awal tahun pertama sudah diisi dari neraca penutup → terhitung dua kali.
+     * Tarik data & bandingkan versi tetap boleh (hanya untuk dicek).
+     */
+    public static function wajibMulaiTahunPertama(string $periode): void
+    {
+        $tahunMulai = SaldoAwal::tahunMulai();
+        if ((int) substr($periode, 0, 4) < $tahunMulai) {
+            throw new RuntimeException('Periode ' . SnapshotJurnal::labelPeriode($periode) . " sebelum tahun pertama SIKEU ({$tahunMulai}) — hanya boleh ditarik untuk dicek, tidak dibukukan (saldonya sudah tercakup di saldo awal {$tahunMulai}).");
+        }
+    }
+
+    /**
+     * Batalkan seluruh posting (jurnal SIRUS & jurnal umum) di periode sebelum tahun pertama SIKEU yang terlanjur
+     * dibukukan; versi sah dilepas, hasil tarikan tetap tersimpan. Periode terkunci ikut dibuka (tercatat di audit).
+     * @return array{periode: array<int, string>, jurnal: int}
+     */
+    public function batalkanSebelumTahunMulai(?int $userId): array
+    {
+        $tahunMulai = SaldoAwal::tahunMulai();
+        $batas = sprintf('%04d01', $tahunMulai);
+
+        return DB::transaction(function () use ($batas, $tahunMulai, $userId) {
+            $sekarang = now();
+            $periodeList = DB::table('sikeumst_periodes')->where('periode', '<', $batas)
+                ->where(fn ($subQuery) => $subQuery->whereNotNull('snap_id_sah')->orWhere('status', '<>', self::STATUS_BUKA))
+                ->orderBy('periode')->pluck('periode')->map(fn ($periode) => (string) $periode)->all();
+            $jumlahJurnal = DB::table('sikeutxn_jurnal_hdrs')->where('periode', '<', $batas)->where('status', 'P')
+                ->where('sumber', '<>', SaldoAwal::SUMBER)
+                ->update(['status' => 'B', 'dibatalkan_oleh' => $userId, 'dibatalkan_at' => $sekarang,
+                    'alasan_batal' => "Sebelum tahun pertama SIKEU ({$tahunMulai})", 'updated_at' => $sekarang]);
+            DB::table('sikeumst_periodes')->where('periode', '<', $batas)
+                ->update(['snap_id_sah' => null, 'status' => self::STATUS_BUKA, 'updated_at' => $sekarang]);
+            BaganAkun::catatAudit('BATAL_SEBELUM_TAHUN_MULAI', 'SIKEUMST_PERIODES', "<{$batas}", ['periode' => $periodeList],
+                ['jurnal_dibatalkan' => $jumlahJurnal]);
+
+            return ['periode' => $periodeList, 'jurnal' => $jumlahJurnal];
+        });
+    }
+
+    /**
+     * Akun SIRUS yang diabaikan (dibukukan = '0') dan nilainya di satu snapshot — untuk jendela pengesahan.
+     * Nilai = jumlah debit baris MILIK akun itu (sisi lawannya ikut terbuang).
+     * @return array<int, array{acc: string, nama: string, debit: float, kredit: float}>
+     */
+    public function akunDiabaikan(int $snapId): array
+    {
+        return array_map(fn ($row) => ['acc' => (string) $row->acc, 'nama' => (string) $row->nama, 'debit' => (float) $row->debit, 'kredit' => (float) $row->kredit],
+            DB::select(
+                "SELECT p.acc_id_sirus AS acc, p.nama_sirus AS nama, NVL(SUM(d.txn_d), 0) AS debit, NVL(SUM(d.txn_k), 0) AS kredit
+                   FROM sikeumst_peta_akun_sirus p
+                   LEFT JOIN sikeutxn_snap_dtls d ON d.snap_id = ? AND d.txn_acc = p.acc_id_sirus
+                  WHERE p.dibukukan = '0'
+                  GROUP BY p.acc_id_sirus, p.nama_sirus ORDER BY p.acc_id_sirus",
+                [$snapId]
+            ));
+    }
+
+    /**
+     * Pratinjau dampak mengabaikan satu akun SIRUS: transaksi lawan yang ikut terbuang, dari tarikan selesai terakhir.
+     * @return array{snap: ?object, lawan: array<int, array{acc: string, nama: ?string, debit: float, kredit: float}>, debit: float, kredit: float}
+     */
+    public function dampakAbaikan(string $accIdSirus): array
+    {
+        // tarikan selesai terakhir yang MEMUAT akun ini (tarikan terbaru bisa saja bulan tanpa transaksi akun tsb.)
+        $snap = DB::table('sikeutxn_snap_hdrs as h')->where('h.status', 'S')
+            ->whereExists(fn ($subQuery) => $subQuery->selectRaw('1')->from('sikeutxn_snap_dtls as d')
+                ->whereColumn('d.snap_id', 'h.snap_id')->where('d.txn_acc', $accIdSirus))
+            ->orderByDesc('h.selesai_at')->first(['h.snap_id', 'h.periode', 'h.versi']);
+        if (!$snap) {
+            return ['snap' => null, 'lawan' => [], 'debit' => 0.0, 'kredit' => 0.0];
+        }
+        $rows = DB::select(
+            "SELECT d.txn_acc_k AS acc, MAX(p.nama_sirus) AS nama, NVL(SUM(d.txn_d), 0) AS debit, NVL(SUM(d.txn_k), 0) AS kredit
+               FROM sikeutxn_snap_dtls d LEFT JOIN sikeumst_peta_akun_sirus p ON p.acc_id_sirus = d.txn_acc_k
+              WHERE d.snap_id = ? AND d.txn_acc = ? AND (d.txn_d <> 0 OR d.txn_k <> 0)
+              GROUP BY d.txn_acc_k ORDER BY NVL(SUM(d.txn_d), 0) + NVL(SUM(d.txn_k), 0) DESC",
+            [$snap->snap_id, $accIdSirus]
+        );
+        $lawan = array_map(fn ($row) => ['acc' => (string) $row->acc, 'nama' => $row->nama, 'debit' => (float) $row->debit, 'kredit' => (float) $row->kredit], $rows);
+
+        return ['snap' => $snap, 'lawan' => $lawan, 'debit' => array_sum(array_column($lawan, 'debit')), 'kredit' => array_sum(array_column($lawan, 'kredit'))];
     }
 
     /**
@@ -153,6 +239,7 @@ class BukuBesar
             throw new RuntimeException('Snapshot belum selesai diambil — hanya versi berstatus Selesai yang bisa disahkan.');
         }
         $periode = (string) $snapshot->periode;
+        self::wajibMulaiTahunPertama($periode);
         $belumSiap = $this->akunBelumSiap($snapId);
         if ($belumSiap !== []) {
             throw new RuntimeException('Akun SIRUS belum dipetakan ke akun Detail aktif: ' . implode(', ', array_slice($belumSiap, 0, 10))
@@ -218,6 +305,7 @@ class BukuBesar
                               JOIN sikeumst_peta_akun_sirus pa ON pa.acc_id_sirus = d.txn_acc
                               JOIN sikeumst_peta_akun_sirus pl ON pl.acc_id_sirus = d.txn_acc_k
                              WHERE d.snap_id = ? AND d.{$kolomSirus} > 0
+                               AND pa.dibukukan = '1' AND pl.dibukukan = '1'
                                AND d.txn_date >= TO_DATE(?, 'YYYY-MM-DD') AND d.txn_date < TO_DATE(?, 'YYYY-MM-DD') + 1
                              GROUP BY pa.akun_id, pl.akun_id, d.cabang_kunci
                              ORDER BY pa.akun_id, pl.akun_id, d.cabang_kunci)",
@@ -227,6 +315,10 @@ class BukuBesar
 
                 $total = DB::table('sikeutxn_jurnal_dtls')->where('jurnal_id', $jurnalId)
                     ->selectRaw('COUNT(*) AS baris, NVL(SUM(debit), 0) AS debit, NVL(SUM(kredit), 0) AS kredit')->first();
+                if ((int) $total->baris === 0) {
+                    DB::table('sikeutxn_jurnal_hdrs')->where('jurnal_id', $jurnalId)->delete(); // seluruh baris hari itu diabaikan
+                    continue;
+                }
                 if (round((float) $total->debit - (float) $total->kredit, 2) != 0.0) {
                     throw new RuntimeException("Jurnal {$tanggal} tidak seimbang (D {$total->debit} / K {$total->kredit}) — posting dibatalkan.");
                 }
@@ -240,16 +332,29 @@ class BukuBesar
                 $totalKredit += (float) $total->kredit;
             }
 
-            if (round($totalDebit - (float) $snapshot->total_debit, 2) != 0.0 || round($totalKredit - (float) $snapshot->total_kredit, 2) != 0.0) {
-                throw new RuntimeException("Total posting (D {$totalDebit} / K {$totalKredit}) ≠ total snapshot (D {$snapshot->total_debit} / K {$snapshot->total_kredit}) — posting dibatalkan.");
+            // Pembanding = total snapshot TANPA baris yang menyentuh akun SIRUS yang diabaikan (dibukukan = '0')
+            $diharapkan = DB::selectOne(
+                "SELECT NVL(SUM(d.txn_d), 0) AS debit, NVL(SUM(d.txn_k), 0) AS kredit, COUNT(*) AS baris
+                   FROM sikeutxn_snap_dtls d
+                   JOIN sikeumst_peta_akun_sirus pa ON pa.acc_id_sirus = d.txn_acc
+                   JOIN sikeumst_peta_akun_sirus pl ON pl.acc_id_sirus = d.txn_acc_k
+                  WHERE d.snap_id = ? AND pa.dibukukan = '1' AND pl.dibukukan = '1'",
+                [$snapshot->snap_id]
+            );
+            if (round($totalDebit - (float) $diharapkan->debit, 2) != 0.0 || round($totalKredit - (float) $diharapkan->kredit, 2) != 0.0) {
+                throw new RuntimeException("Total posting (D {$totalDebit} / K {$totalKredit}) ≠ total snapshot yang dibukukan (D {$diharapkan->debit} / K {$diharapkan->kredit}) — posting dibatalkan.");
             }
+            $diabaikan = ['debit' => round((float) $snapshot->total_debit - (float) $diharapkan->debit, 2),
+                'kredit' => round((float) $snapshot->total_kredit - (float) $diharapkan->kredit, 2)];
 
             DB::table('sikeumst_periodes')->where('periode', $periode)->update(['snap_id_sah' => $snapshot->snap_id, 'updated_at' => $sekarang]);
             BaganAkun::catatAudit('SAHKAN_POSTING', 'SIKEUMST_PERIODES', $periode,
                 ['snap_id_sah' => $periodeRow->snap_id_sah], ['snap_id_sah' => (int) $snapshot->snap_id, 'versi' => (int) $snapshot->versi,
-                    'jurnal' => $jumlahJurnal, 'baris' => $jumlahBaris, 'debit' => $totalDebit, 'jurnal_dibatalkan' => $dibatalkan]);
+                    'jurnal' => $jumlahJurnal, 'baris' => $jumlahBaris, 'debit' => $totalDebit, 'jurnal_dibatalkan' => $dibatalkan,
+                    'tidak_dibukukan' => $diabaikan]);
 
-            return ['jurnal' => $jumlahJurnal, 'baris' => $jumlahBaris, 'debit' => $totalDebit, 'kredit' => $totalKredit, 'dibatalkan' => $dibatalkan];
+            return ['jurnal' => $jumlahJurnal, 'baris' => $jumlahBaris, 'debit' => $totalDebit, 'kredit' => $totalKredit, 'dibatalkan' => $dibatalkan,
+                'diabaikan' => $diabaikan];
         });
     }
 
@@ -295,6 +400,24 @@ class BukuBesar
 
     // ─── Kunci periode ───────────────────────────────────────────────────────
 
+    /**
+     * Bulan yang wajib dikunci berikutnya: bulan pertama sejak 01/tahun pertama SIKEU yang belum Kunci/Tutup —
+     * termasuk bulan di tahun yang BELUM DIBUKA (tidak dilewati), jadi 2024 harus terkunci penuh sebelum 2025, dst.
+     * @return array{periode: string, ada: bool} ada = baris periodenya sudah ada (tahunnya sudah dibuka)
+     */
+    public static function giliranKunci(): array
+    {
+        $periode = sprintf('%04d01', SaldoAwal::tahunMulai());
+        $terkunci = DB::table('sikeumst_periodes')->where('periode', '>=', $periode)
+            ->whereIn('status', [self::STATUS_KUNCI, self::STATUS_TUTUP])->pluck('periode')
+            ->map(fn ($nilai) => (string) $nilai)->flip()->all();
+        while (isset($terkunci[$periode])) {
+            $periode = SnapshotJurnal::periodeBerikutnya($periode);
+        }
+
+        return ['periode' => $periode, 'ada' => DB::table('sikeumst_periodes')->where('periode', $periode)->exists()];
+    }
+
     /** Kunci periode: wajib sudah diposting & periode sebelumnya sudah dikunci. Saldo akun periode disimpan. */
     public function kunci(string $periode, ?int $userId): void
     {
@@ -310,10 +433,14 @@ class BukuBesar
             if ($draftUmum > 0) {
                 throw new RuntimeException("Masih ada {$draftUmum} draft jurnal di periode ini — posting atau hapus dulu sebelum mengunci.");
             }
-            $sebelumnyaBuka = DB::table('sikeumst_periodes')->where('periode', '<', $periode)->where('status', self::STATUS_BUKA)
-                ->orderBy('periode')->value('periode');
-            if ($sebelumnyaBuka) {
-                throw new RuntimeException('Periode ' . SnapshotJurnal::labelPeriode((string) $sebelumnyaBuka) . ' masih Buka — kunci berurutan dari bulan terlama.');
+            // urutan kunci mulai 01/tahun pertama SIKEU, tanpa melewati tahun yang belum dibuka
+            self::wajibMulaiTahunPertama($periode);
+            $giliran = self::giliranKunci();
+            if ($giliran['periode'] !== $periode) {
+                $label = SnapshotJurnal::labelPeriode($giliran['periode']);
+                throw new RuntimeException($giliran['ada']
+                    ? "Periode {$label} masih Buka — kunci berurutan dari bulan terlama."
+                    : 'Tahun ' . substr($giliran['periode'], 0, 4) . " belum dibuka — buka tahun bukunya, proses, lalu kunci mulai {$label}.");
             }
 
             DB::table('sikeutxn_saldo_akuns')->where('periode', $periode)->delete();

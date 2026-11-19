@@ -1,0 +1,241 @@
+<?php
+
+use Livewire\Component;
+use Spatie\Permission\Models\Role;
+use App\Support\HakAkses;
+
+/**
+ * PANDUAN — CARA PAKAI SIKEU (statis, tanpa mutasi). Isinya sama dengan skill keuangan-rs §5 (alur tutup bulan, aturan
+ * kunci/buka kunci, warna tombol) — ubah keduanya bersamaan. Bagian "Siapa boleh apa" dibaca langsung dari peran &
+ * permission (Spatie) supaya tidak basi bila hak akses diubah di Sistem › Peran & Hak Akses. Terbuka untuk semua user login.
+ */
+new class extends Component {
+    /** @return array<string, array{label: string, peran: array<int, string>}> */
+    public function hakAkses(): array
+    {
+        $perIzin = [];
+        foreach (Role::with('permissions')->orderBy('name')->get() as $peran) {
+            foreach ($peran->permissions as $izin) {
+                $perIzin[$izin->name][] = $peran->name;
+            }
+        }
+        $hasil = [];
+        foreach (HakAkses::DAFTAR as $izin => $label) {
+            $peranList = $perIzin[$izin] ?? [];
+            if (!in_array(HakAkses::PERAN_SUPER, $peranList, true)) {
+                array_unshift($peranList, HakAkses::PERAN_SUPER);
+            }
+            $hasil[$izin] = ['label' => $label, 'peran' => array_values(array_unique($peranList))];
+        }
+
+        return $hasil;
+    }
+};
+?>
+
+@php
+    $tautan = fn (string $route, string $label, array $parameter = []) => \Illuminate\Support\Facades\Route::has($route)
+        ? '<a href="' . route($route, $parameter) . '" wire:navigate class="font-semibold underline text-brand-green hover:no-underline dark:text-brand-lime">' . e($label) . '</a>'
+        : '<b>' . e($label) . '</b>';
+    $bagian = [
+        'alur' => 'Gambaran alur',
+        'awal' => '1. Pemasangan awal (sekali)',
+        'bulanan' => '2. Tutup bulan (rutin)',
+        'kunci' => '3. Kunci & buka kunci',
+        'setelah-kunci' => '4. SIRUS berubah setelah dikunci?',
+        'set-ulang' => '4b. Memulai dari tahun lain',
+        'warna' => '5. Arti warna tombol',
+        'hak' => '6. Siapa boleh apa',
+        'tanya' => 'Tanya jawab',
+    ];
+@endphp
+
+<div>
+    <x-page-title title="Cara Pakai SIKEU" subtitle="Alur pembukuan dari data SIRUS sampai laporan keuangan — langkah demi langkah, aturan kunci periode, arti warna tombol" />
+
+    <div class="w-full min-h-[calc(100vh-5rem)] bg-surface-soft dark:bg-gray-900">
+        <div class="grid grid-cols-1 gap-6 px-6 py-6 mx-auto max-w-7xl lg:grid-cols-4">
+
+            {{-- DAFTAR ISI --}}
+            <nav class="lg:sticky lg:top-24 lg:self-start" aria-label="Daftar isi panduan">
+                <div class="p-4 border bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <p class="mb-2 text-xs font-semibold tracking-wide uppercase text-muted">Daftar isi</p>
+                    <ul class="space-y-1 text-sm">
+                        @foreach ($bagian as $id => $judul)
+                            <li><a href="#{{ $id }}" class="block px-2 py-1 rounded-lg text-body hover:bg-surface-soft hover:text-brand-green dark:text-gray-300">{{ $judul }}</a></li>
+                        @endforeach
+                    </ul>
+                    <p class="pt-3 mt-3 text-xs border-t border-hairline text-muted">
+                        Lihat juga: {!! $tautan('panduan.istilah-keuangan', 'Istilah Keuangan') !!}
+                    </p>
+                </div>
+            </nav>
+
+            {{-- ISI --}}
+            <article class="space-y-6 lg:col-span-3 text-body dark:text-gray-300 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-ink dark:[&_h2]:text-gray-100 [&_h3]:mt-4 [&_h3]:font-semibold [&_h3]:text-ink dark:[&_h3]:text-gray-100 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1">
+
+                {{-- ALUR --}}
+                <section id="alur" class="p-6 border scroll-mt-24 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <h2>Gambaran alur</h2>
+                    <p class="mt-2 text-sm">Transaksi pelayanan tetap dikerjakan di SIRUS (kasir, apotek, penerimaan PBF). SIKEU menarik jurnalnya, membukukannya, lalu menyusun laporan keuangan.</p>
+                    <ol class="grid grid-cols-1 gap-2 mt-4 !list-none !pl-0 text-sm sm:grid-cols-2 xl:grid-cols-3">
+                        @foreach ([
+                            ['Tarik dari SIRUS', 'Salinan jurnal SIRUS satu bulan (versi)', 'buku-besar.periode'],
+                            ['Sahkan & Posting', 'Versi yang dipakai masuk buku besar', 'buku-besar.periode'],
+                            ['Jurnal Umum', 'Penyesuaian & koreksi akhir bulan', 'buku-besar.jurnal-umum'],
+                            ['Neraca Saldo', 'Periksa debit = kredit & saldo janggal', 'buku-besar.neraca-saldo'],
+                            ['Kunci', 'Bulan dinyatakan final', 'buku-besar.periode'],
+                            ['Laporan', 'Neraca & Laba Rugi', 'laporan.neraca'],
+                        ] as $nomor => [$judul, $isi, $route])
+                            <li class="flex gap-3 p-3 border rounded-xl border-hairline dark:border-gray-700">
+                                <span class="inline-flex items-center justify-center w-7 h-7 text-sm font-bold rounded-full shrink-0 bg-surface-strong text-brand-green dark:bg-gray-800 dark:text-brand-lime">{{ $nomor + 1 }}</span>
+                                <span>
+                                    <span class="block font-semibold text-ink dark:text-gray-100">{!! $tautan($route, $judul) !!}</span>
+                                    <span class="block text-xs text-muted dark:text-gray-400">{{ $isi }}</span>
+                                </span>
+                            </li>
+                        @endforeach
+                    </ol>
+                </section>
+
+                {{-- AWAL --}}
+                <section id="awal" class="p-6 border scroll-mt-24 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <h2>1. Pemasangan awal (sekali)</h2>
+                    <ol class="mt-3 text-sm">
+                        <li>Periksa {!! $tautan('master.peta-akun', 'Data Induk › Peta Akun SIRUS') !!}: status <b>Perlu perhatian</b> harus 0 — setiap akun SIRUS punya pasangan akun SIKEU.</li>
+                        <li>Buka {!! $tautan('buku-besar.periode', 'Pembukuan › Tarik Data SIRUS') !!}, ketik tahunnya, klik <b>Buka Tahun Buku</b> (membuat 12 periode).</li>
+                        <li>Isi {!! $tautan('buku-besar.saldo-awal', 'Pembukuan › Saldo Awal') !!} <b>hanya untuk tahun pertama SIKEU</b> (pengaturan di halaman itu): ketik saldo tiap akun per 1 Januari dari neraca penutup / audit, rekening koran, dan opname → <b>Simpan Draft</b> (boleh bertahap) → <b>Sahkan</b> (wajib seimbang). Saldo awal <b>tidak</b> diambil dari SIRUS — SIKEU sumber kebenaran keuangan.</li>
+                        <li>Tahun sebelum tahun pertama (mis. 2025) <b>hanya untuk dicek</b>: boleh Tarik dari SIRUS &amp; Bandingkan Versi, tetapi tidak bisa disahkan, diberi jurnal umum, atau dikunci — saldonya sudah tercakup di saldo awal tahun pertama.</li>
+                        <li>Tahun-tahun berikutnya <b>tidak diisi</b>: saldo akhir Desember diteruskan otomatis jadi saldo awal Januari. Mengisinya lagi = terhitung dua kali, jadi ditolak.</li>
+                        <li>Pekerjaan yang dikerjakan sendiri di SIKEU (mis. HPP taksiran, penyusutan, utang di luar SIRUS): matikan <b>Masuk pembukuan</b> akun SIRUS-nya di {!! $tautan('master.peta-akun', 'Peta Akun SIRUS') !!} supaya tidak tercatat dua kali. Seluruh transaksi akun itu (kedua sisinya) tidak diposting — layar menampilkan dampaknya sebelum dimatikan.</li>
+                    </ol>
+                </section>
+
+                {{-- BULANAN --}}
+                <section id="bulanan" class="p-6 border scroll-mt-24 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <h2>2. Tutup bulan (rutin, tiap awal bulan)</h2>
+                    <ol class="mt-3 text-sm">
+                        <li>{!! $tautan('buku-besar.periode', 'Tarik Data SIRUS') !!} → baris bulan lalu → <b>Tarik dari SIRUS</b> (sekitar 40–70 detik; biarkan halaman terbuka). Banyak bulan sekaligus: <b>Tarik &amp; Sahkan Setahun</b>.</li>
+                        <li>Bila bulan itu sudah pernah ditarik, lihat kolom <b>Versi Disahkan</b>: <i>sama</i> = SIRUS tidak berubah; <i>berbeda</i> = klik tandanya untuk melihat transaksi yang berubah di {!! $tautan('cutoff.banding-versi', 'Bandingkan Versi') !!}.</li>
+                        <li><b>Sahkan &amp; Posting</b> versi yang dipakai (pemeriksaan peta akun tampil di jendela pengesahan).</li>
+                        <li>Buat jurnal penyesuaian di {!! $tautan('buku-besar.jurnal-umum', 'Jurnal Umum') !!}: jasa medis dokter terutang (rekap SIAP), pendapatan pasien rawat inap yang masih dirawat, listrik/air terutang, penyusutan, koreksi salah akun. Staf menyimpan <b>draft</b>, manajer <b>memposting</b>.</li>
+                        <li>Periksa {!! $tautan('buku-besar.neraca-saldo', 'Neraca Saldo') !!}: badge <b>Seimbang</b>, dan klik badge <b>saldo berlawanan</b> untuk melihat akun yang janggal (piutang/persediaan bersaldo kredit). Klik akun untuk melihat mutasinya sampai transaksi SIRUS.</li>
+                        <li>Rekonsiliasi: kas & bank dengan rekening koran, persediaan dengan kartu stok SIRUS, utang PBF per supplier.</li>
+                        <li>Baca {!! $tautan('laporan.laba-rugi', 'Laba Rugi') !!} dan {!! $tautan('laporan.neraca', 'Neraca') !!} (status <i>Sementara</i>) → review manajer keuangan.</li>
+                        <li><b>Kunci</b> bulan itu di Tarik Data SIRUS — laporan menjadi <i>Final</i>.</li>
+                    </ol>
+                </section>
+
+                {{-- KUNCI --}}
+                <section id="kunci" class="p-6 border scroll-mt-24 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <h2>3. Kunci &amp; buka kunci — selalu berurutan</h2>
+                    <div class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2">
+                        <div class="p-4 border rounded-xl border-hairline dark:border-gray-700">
+                            <p class="flex items-center gap-2 font-semibold text-ink dark:text-gray-100"><x-ikon nama="kunci" /> Kunci: dari atas ke bawah</p>
+                            <p class="mt-2 font-mono text-sm">01 → 02 → 03 → … → 12</p>
+                            <p class="mt-2 text-xs text-muted dark:text-gray-400">Hanya bulan Buka <b>terlama</b> yang bisa dikunci, dan harus sudah diposting. Berlaku lintas tahun (Desember 2025 sebelum Januari 2026).</p>
+                        </div>
+                        <div class="p-4 border rounded-xl border-hairline dark:border-gray-700">
+                            <p class="flex items-center gap-2 font-semibold text-ink dark:text-gray-100"><x-ikon nama="buka-kunci" /> Buka kunci: dari bawah ke atas</p>
+                            <p class="mt-2 font-mono text-sm">12 → 11 → 10 → … → 01</p>
+                            <p class="mt-2 text-xs text-muted dark:text-gray-400">Hanya bulan terkunci <b>terbaru</b> yang bisa dibuka, dengan alasan yang tercatat di log audit.</p>
+                        </div>
+                    </div>
+                    <h3>Kenapa harus berurutan?</h3>
+                    <p class="text-sm">Saldo awal tiap bulan adalah saldo akhir bulan sebelumnya. Bila Juli dikunci sementara Juni masih bisa berubah, saldo Juli yang sudah "final" ikut bergeser — laporan final tidak bisa dipercaya.</p>
+                    <h3>Kenapa tombol Kunci saya abu-abu?</h3>
+                    <p class="text-sm">Belum gilirannya. Keterangan di bawah tombol menjelaskan bulan mana yang harus dikunci / diposting lebih dulu, mis. <i>"kunci 01/2026 dulu"</i> atau <i>"02/2026 belum diposting"</i>.</p>
+                    <h3>Setelah dikunci</h3>
+                    <ul class="text-sm">
+                        <li>Tidak bisa Sahkan / Ganti Versi / jurnal umum baru di bulan itu.</li>
+                        <li>Masih bisa <b>Tarik ulang</b> untuk mengecek perubahan di SIRUS (buku tidak berubah) dan melihat laporan.</li>
+                    </ul>
+                </section>
+
+                {{-- SETELAH KUNCI --}}
+                <section id="setelah-kunci" class="p-6 border scroll-mt-24 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <h2>4. SIRUS berubah setelah bulan dikunci?</h2>
+                    <ol class="mt-3 text-sm">
+                        <li>Di Tarik Data SIRUS, baris bulan terkunci → <b>Tarik ulang</b>.</li>
+                        <li>Kolom Versi Disahkan: <span class="font-medium text-fg-success-strong">sama — SIRUS tidak berubah</span> (selesai), atau <span class="inline-flex items-center gap-1 px-1.5 rounded bg-warning-soft text-fg-warning"><x-ikon-peringatan /> berbeda</span> → klik untuk melihat transaksi yang berubah.</li>
+                        <li>Bila berbeda, pilih salah satu:
+                            <ul class="mt-1">
+                                <li><b>Disarankan</b> — biarkan terkunci; bukukan selisihnya lewat {!! $tautan('buku-besar.jurnal-umum', 'Jurnal Umum') !!} di bulan yang masih Buka (jurnal koreksi). Laporan yang sudah final tetap utuh.</li>
+                                <li>Bila memang harus diganti — <b>Buka Kunci</b> (dari bulan terbaru, beralasan) → <b>Ganti Versi</b> → <b>Kunci</b> lagi berurutan.</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </section>
+
+                {{-- SET ULANG --}}
+                <section id="set-ulang" class="p-6 border scroll-mt-24 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <h2>4b. Memulai pembukuan dari tahun lain</h2>
+                    <p class="mt-2 text-sm">Pembukuan bisa dimulai dari tahun berapa pun (mis. 2023 atau 2024) lewat {!! $tautan('buku-besar.saldo-awal', 'Saldo Awal') !!} › Pengaturan › <b>Set Ulang</b> (tombol kuning, wajib alasan). Jendelanya menampilkan dampak sebelum disetujui.</p>
+                    <ul class="mt-3 text-sm">
+                        <li><b>Mundur</b> (mis. 2026 → 2024): saldo awal 2026 dibatalkan — 2026 nanti diteruskan dari Desember 2025. Posting yang ada tetap. Isi saldo awal 1 Januari 2024, buka &amp; proses 2024 dan 2025.</li>
+                        <li><b>Maju</b> (mis. 2024 → 2026): posting &amp; saldo awal sebelum 2026 dibatalkan (hasil tarikan tetap, tahun itu jadi "hanya dicek"). <b>Ditolak</b> bila masih ada bulan terkunci sebelum 2026 — buka kuncinya dulu dari bulan terbaru.</li>
+                        <li><b>Kunci per tahun berurutan:</b> 01/2024 … 12/2024 harus terkunci dulu, baru 2025, baru 2026. Tahun yang belum dibuka tidak dilewati — "Kunci berikutnya" di Tarik Data SIRUS selalu menunjukkan gilirannya.</li>
+                    </ul>
+                </section>
+
+                {{-- WARNA --}}
+                <section id="warna" class="p-6 border scroll-mt-24 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <h2>5. Arti warna tombol</h2>
+                    <p class="mt-2 text-sm">Di tiap baris hanya langkah berikutnya yang berwarna hijau — ikuti tombol hijau.</p>
+                    <div class="mt-4 space-y-3 text-sm">
+                        <div class="flex flex-wrap items-center gap-3"><x-primary-button type="button" tabindex="-1" class="pointer-events-none"><x-ikon nama="setujui" /> Sahkan &amp; Posting</x-primary-button> <span>Hijau = langkah berikutnya yang perlu dikerjakan (Sahkan, Kunci di bulan gilirannya, Tarik &amp; Sahkan Setahun).</span></div>
+                        <div class="flex flex-wrap items-center gap-3"><x-secondary-button type="button" tabindex="-1" class="pointer-events-none"><x-ikon nama="muat-ulang" /> Tarik ulang</x-secondary-button> <span>Abu = aksi rutin atau alternatif (Tarik dari SIRUS, Tarik ulang, Ganti Versi).</span></div>
+                        <div class="flex flex-wrap items-center gap-3"><x-outline-button type="button" tabindex="-1" class="pointer-events-none"><x-ikon nama="lihat" /> Neraca Saldo</x-outline-button> <span>Garis = hanya melihat.</span></div>
+                        <div class="flex flex-wrap items-center gap-3"><x-warning-button type="button" tabindex="-1" class="pointer-events-none"><x-ikon nama="buka-kunci" /> Buka Kunci</x-warning-button> <span>Kuning = peringatan, perlu alasan.</span></div>
+                        <div class="flex flex-wrap items-center gap-3"><x-secondary-button type="button" disabled><x-ikon nama="kunci" /> Kunci</x-secondary-button> <span>Pudar = belum bisa dipakai; alasannya tertulis di bawah tombol.</span></div>
+                    </div>
+                </section>
+
+                {{-- HAK AKSES --}}
+                <section id="hak" class="p-6 border scroll-mt-24 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <h2>6. Siapa boleh apa</h2>
+                    <p class="mt-2 text-sm">Dibaca langsung dari pengaturan {!! $tautan('sistem.role-control', 'Sistem › Peran & Hak Akses') !!} saat ini. Peran {{ \App\Support\HakAkses::PERAN_SUPER }} selalu boleh semua.</p>
+                    <div class="mt-4 overflow-x-auto">
+                        <table class="ds-table ds-table-entri">
+                            <thead><tr><th>Hak</th><th>Peran yang memiliki</th></tr></thead>
+                            <tbody>
+                                @foreach ($this->hakAkses() as $izin => $hak)
+                                    <tr wire:key="hak-{{ $izin }}">
+                                        <td class="text-sm"><span class="block text-ink dark:text-gray-100">{{ $hak['label'] }}</span><span class="font-mono text-[11px] text-muted">{{ $izin }}</span></td>
+                                        <td><div class="flex flex-wrap gap-1">@foreach ($hak['peran'] as $namaPeran)<x-badge variant="alternative">{{ $namaPeran }}</x-badge>@endforeach</div></td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                {{-- TANYA JAWAB --}}
+                <section id="tanya" class="p-6 border scroll-mt-24 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <h2>Tanya jawab</h2>
+                    @php
+                        $tanyaJawab = [
+                            ['Laporan kosong / hanya sebagian bulan?', 'Laporan hanya membaca bulan yang sudah <b>diposting</b>. Peringatan kuning di atas laporan menyebut bulan yang belum diposting.'],
+                            ['Kenapa tombol Kunci abu-abu / tidak bisa diklik?', 'Belum gilirannya: kunci berurutan dari bulan terlama. Keterangan di bawah tombol menyebut bulan yang harus dikunci atau diposting lebih dulu.'],
+                            ['Neraca Saldo TIDAK seimbang?', 'Seharusnya tidak terjadi untuk data SIRUS (jurnalnya berpasangan). Periksa jurnal umum yang baru diposting, lalu hubungi admin.'],
+                            ['Saya salah posting jurnal umum?', 'Bulan masih Buka: <b>Batalkan</b> jurnalnya (dengan alasan). Bulan sudah dikunci: <b>Salin sebagai pembalik</b> ke bulan yang masih Buka.'],
+                            ['Pengesahan ditolak karena akun belum dipetakan?', 'Ada akun baru di SIRUS. Petakan di ' . $tautan('master.peta-akun', 'Peta Akun SIRUS') . ' (filter <i>Perlu perhatian</i>), lalu sahkan lagi.'],
+                            ['Kenapa saldo awal tahun ini tidak bisa diisi?', 'Saldo awal hanya diisi untuk tahun pertama SIKEU. Tahun sesudahnya diteruskan otomatis dari saldo akhir Desember; koreksi lewat Jurnal Umum di tahun yang bersangkutan.'],
+                            ['Akun SIRUS diabaikan, lalu apa?', 'Transaksinya (termasuk lawannya, mis. kas atau persediaan) tidak masuk buku. Catat penggantinya di SIKEU lewat Jurnal Umum; bulan yang sudah diposting baru berubah setelah Tarik ulang lalu Sahkan.'],
+                            ['Halaman tertutup saat menarik data?', 'Buka lagi Tarik Data SIRUS di tahun yang sama — penarikan dilanjutkan otomatis.'],
+                            ['Data SIRUS bulan lalu berubah setelah dikunci?', 'Lihat bagian 4: Tarik ulang, periksa tanda sama / berbeda, lalu koreksi lewat Jurnal Umum (disarankan) atau Buka Kunci.'],
+                        ];
+                    @endphp
+                    <div class="mt-3 space-y-2">
+                        @foreach ($tanyaJawab as [$tanya, $jawab])
+                            <details class="p-3 border rounded-xl border-hairline dark:border-gray-700">
+                                <summary class="font-semibold cursor-pointer text-ink dark:text-gray-100">{{ $tanya }}</summary>
+                                <p class="mt-2 text-sm">{!! $jawab !!}</p>
+                            </details>
+                        @endforeach
+                    </div>
+                </section>
+            </article>
+        </div>
+    </div>
+</div>

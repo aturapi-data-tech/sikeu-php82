@@ -30,6 +30,7 @@ class JurnalUmum
 
     private function wajibPeriodeBuka(string $periode): void
     {
+        BukuBesar::wajibMulaiTahunPertama($periode);
         $periodeRow = DB::table('sikeumst_periodes')->where('periode', $periode)->first();
         if (!$periodeRow) {
             throw new RuntimeException('Periode ' . SnapshotJurnal::labelPeriode($periode) . ' belum dibuka — buka tahun bukunya di Tarik Data SIRUS.');

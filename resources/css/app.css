@@ -254,6 +254,11 @@
 .ds-table tbody td { padding:16px 24px; color:var(--body); vertical-align:middle; }
 .ds-table tbody tr + tr td { border-top:1px solid var(--hairline-soft); } /* garis antar record */
 .ds-table tbody tr:hover { background:var(--surface-soft); }
+/* Garis tegak antar kolom di SEMUA tabel layar (keputusan user 2026-11-19); sel pertama tiap baris tanpa garis kiri
+   (sudah ada bingkai kartu). Baris judul ke-2 (Debit/Kredit di bawah colspan) tetap bergaris kiri. */
+.ds-table th, .ds-table td { border-left:1px solid var(--hairline); }
+.ds-table td:first-child, .ds-table thead tr:first-child > th:first-child,
+.ds-table thead tr:only-child > th:first-child { border-left-width:0; }
 .ds-td-token { @apply text-caption; font-family:var(--mono); color:var(--ink); white-space:nowrap; }
 .ds-td-meta  { @apply text-xs; font-family:var(--mono); color:var(--muted-soft); white-space:nowrap; }
 .ds-td-class { @apply text-xs; font-family:var(--mono); color:var(--primary); white-space:nowrap; }

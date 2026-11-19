@@ -46,6 +46,8 @@ Route::middleware(['auth', 'menu'])->group(function () {
         ->name('cutoff.banding-versi');
 
     // ── PANDUAN ──
+    Route::livewire('/panduan/cara-pakai', 'pages::panduan.cara-pakai.cara-pakai')
+        ->name('panduan.cara-pakai');
     Route::livewire('/panduan/istilah-keuangan', 'pages::panduan.istilah-keuangan.istilah-keuangan')
         ->name('panduan.istilah-keuangan');
 

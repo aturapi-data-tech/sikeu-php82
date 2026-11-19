@@ -40,6 +40,15 @@ class SnapshotJurnal
         return is_string($periode) && preg_match('/^\d{4}(0[1-9]|1[0-2])$/', $periode) === 1;
     }
 
+    /** 202612 → 202701 */
+    public static function periodeBerikutnya(string $periode): string
+    {
+        $tahun = (int) substr($periode, 0, 4);
+        $bulan = (int) substr($periode, 4, 2) + 1;
+
+        return $bulan > 12 ? sprintf('%04d01', $tahun + 1) : sprintf('%04d%02d', $tahun, $bulan);
+    }
+
     public static function labelPeriode(string $periode): string
     {
         return self::periodeValid($periode) ? Carbon::createFromFormat('Ym d', "{$periode} 01")->format('m/Y') : $periode;

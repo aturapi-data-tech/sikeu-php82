@@ -6,6 +6,7 @@ use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
 use App\Support\BukuBesar;
 use App\Support\Format;
+use App\Support\SaldoAwal;
 use App\Support\SnapshotJurnal;
 
 /**
@@ -92,6 +93,13 @@ new class extends Component {
         return $this->tahunSah() ? (new BukuBesar())->periodeList((int) $this->tahun) : [];
     }
 
+    /** Tahun sebelum tahun pertama SIKEU: hanya tarik & bandingkan (tidak dibukukan). */
+    #[Computed]
+    public function sebelumTahunMulai(): bool
+    {
+        return $this->tahunSah() && (int) $this->tahun < SaldoAwal::tahunMulai();
+    }
+
     /** Bulan yang akan diproses "Proses Setahun": Buka, belum diposting, tidak di masa depan. */
     #[Computed]
     public function periodeBelumDiposting(): array
@@ -103,13 +111,18 @@ new class extends Component {
             ->pluck('periode')->values()->all();
     }
 
-    /** Bulan yang boleh dikunci berikutnya: periode Buka terlama (semua tahun) — kunci wajib berurutan. */
+    /** Giliran kunci lintas tahun sejak 01/tahun pertama SIKEU (tahun yang belum dibuka tidak dilewati). */
+    #[Computed]
+    public function giliranKunci(): array
+    {
+        return BukuBesar::giliranKunci();
+    }
+
+    /** Bulan yang boleh dikunci sekarang = giliran kunci, bila tahunnya sudah dibuka. */
     #[Computed]
     public function periodeBolehKunci(): ?string
     {
-        $periode = DB::table('sikeumst_periodes')->where('status', BukuBesar::STATUS_BUKA)->min('periode');
-
-        return $periode !== null ? (string) $periode : null;
+        return $this->giliranKunci['ada'] ? $this->giliranKunci['periode'] : null;
     }
 
     /** Alasan bulan lain belum bisa dikunci (dipakai tombol Kunci nonaktif). */
@@ -117,7 +130,8 @@ new class extends Component {
     public function alasanBelumGiliranKunci(): ?string
     {
         if ($this->periodeBolehKunci === null) {
-            return null;
+            return 'Kunci berurutan per tahun — tahun ' . substr($this->giliranKunci['periode'], 0, 4) . ' belum dibuka; buka, proses, lalu kunci mulai '
+                . SnapshotJurnal::labelPeriode($this->giliranKunci['periode']) . '.';
         }
         $sudahDiposting = DB::table('sikeumst_periodes')->where('periode', $this->periodeBolehKunci)->whereNotNull('snap_id_sah')->exists();
         $label = SnapshotJurnal::labelPeriode($this->periodeBolehKunci);
@@ -144,7 +158,7 @@ new class extends Component {
 
     private function segarkan(): void
     {
-        unset($this->periodeList, $this->tahunAda, $this->periodeBelumDiposting, $this->kemajuanProses, $this->periodeBolehKunci, $this->periodeBolehBukaKunci, $this->alasanBelumGiliranKunci);
+        unset($this->periodeList, $this->tahunAda, $this->periodeBelumDiposting, $this->kemajuanProses, $this->periodeBolehKunci, $this->periodeBolehBukaKunci, $this->alasanBelumGiliranKunci, $this->giliranKunci);
     }
 
     // ─── Ambil snapshot & Proses Setahun ──────────────────────────────────────
@@ -301,6 +315,13 @@ new class extends Component {
         return $this->snapIdPilih ? (new BukuBesar())->akunBelumSiap($this->snapIdPilih) : [];
     }
 
+    /** Akun SIRUS yang diabaikan (Peta Akun SIRUS › Masuk pembukuan = tidak) beserta nilainya di versi terpilih. */
+    #[Computed]
+    public function akunDiabaikan(): array
+    {
+        return $this->snapIdPilih ? (new BukuBesar())->akunDiabaikan($this->snapIdPilih) : [];
+    }
+
     public function sahkanPosting(): void
     {
         abort_unless(auth()->user()?->can('jurnal.posting'), 403);
@@ -310,7 +331,8 @@ new class extends Component {
         try {
             $hasil = (new BukuBesar())->sahkanDanPosting($this->snapIdPilih, auth()->id());
             $this->dispatch('toast', type: 'success', message: "Diposting: {$hasil['jurnal']} jurnal, {$hasil['baris']} baris, D = K Rp " . Format::uang($hasil['debit'])
-                . ($hasil['dibatalkan'] > 0 ? " ({$hasil['dibatalkan']} jurnal posting lama dibatalkan)." : '.'));
+                . ($hasil['dibatalkan'] > 0 ? " ({$hasil['dibatalkan']} jurnal posting lama dibatalkan)" : '')
+                . ($hasil['diabaikan']['debit'] > 0 ? '; tidak dibukukan (akun diabaikan) Rp ' . Format::uang($hasil['diabaikan']['debit']) . '.' : '.'));
             $this->tutupPosting();
         } catch (\Throwable $exception) {
             $this->dispatch('toast', type: 'error', message: $exception->getMessage());
@@ -321,7 +343,7 @@ new class extends Component {
     public function tutupPosting(): void
     {
         $this->reset(['periodePosting', 'snapIdPilih']);
-        unset($this->akunBelumSiap);
+        unset($this->akunBelumSiap, $this->akunDiabaikan);
         $this->dispatch('close-modal', name: 'posting-periode');
     }
 
@@ -397,7 +419,7 @@ new class extends Component {
                             <x-secondary-button type="button" wire:click="geserTahun(1)" :disabled="$snapIdProses !== null" class="px-3" aria-label="Tahun berikutnya"><x-ikon nama="berikutnya" /></x-secondary-button>
                         </div>
                     </div>
-                    @if ($this->tahunAda && $this->periodeBelumDiposting !== [] && !$modeAntrean && $snapIdProses === null)
+                    @if ($this->tahunAda && !$this->sebelumTahunMulai && $this->periodeBelumDiposting !== [] && !$modeAntrean && $snapIdProses === null)
                         @if (auth()->user()?->can('snapshot.ambil') && auth()->user()?->can('jurnal.posting'))
                             <x-confirm-button variant="primary" action="prosesSetahun()"
                                 title="Tarik & Sahkan {{ count($this->periodeBelumDiposting) }} Bulan Tahun {{ $tahun }}"
@@ -407,13 +429,30 @@ new class extends Component {
                         @endif
                     @endif
                 </div>
-                <div class="px-4 py-2 text-xs rounded-lg bg-info-tint text-info-deep dark:bg-blue-900/30 dark:text-blue-200 lg:max-w-2xl">
-                    Alur per baris (kolom Aksi): <b>Tarik dari SIRUS</b> → <b>Sahkan & Posting</b> → <b>Neraca Saldo</b> → <b>Kunci</b>. Tombol hijau = langkah berikutnya;
-                    Kunci hanya muncul di bulan terlama yang belum dikunci, Buka Kunci di bulan terkunci terakhir.
-                    Bulan terkunci tetap bisa <b>Tarik ulang</b> untuk mengecek perubahan SIRUS (buku tidak berubah); bila berbeda, koreksi lewat Jurnal Umum. Ketik tahun (mis. 2025) untuk menarik data tahun lama.
-                    Tarik ulang kapan saja bila data SIRUS berubah: hasil tarikan lama tetap disimpan dan bisa dibandingkan.
-                    Selama periode Buka, versi lain boleh disahkan (posting lama dibatalkan, tetap tersimpan). Kunci berurutan dari bulan terlama.
-                </div>
+                <p class="text-xs text-muted dark:text-gray-400" role="status">
+                    Tahun pertama SIKEU: <a href="{{ route('buku-besar.saldo-awal') }}" wire:navigate class="font-semibold underline text-ink dark:text-gray-200">{{ SaldoAwal::tahunMulai() }}</a>
+                    · Kunci berikutnya: <b class="text-ink dark:text-gray-200">{{ SnapshotJurnal::labelPeriode($this->giliranKunci['periode']) }}</b>
+                    @if (!$this->giliranKunci['ada'])
+                        <span class="text-fg-warning">(tahun {{ substr($this->giliranKunci['periode'], 0, 4) }} belum dibuka)</span>
+                    @endif
+                </p>
+                {{-- Penjelasan alur: buka-tutup (pola Tanya jawab panduan) supaya tidak memenuhi layar --}}
+                <details class="px-4 py-2 text-xs rounded-lg bg-info-tint text-info-deep dark:bg-blue-900/30 dark:text-blue-200 lg:max-w-2xl group">
+                    <summary class="flex items-center gap-2 font-medium cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green rounded">
+                        <x-ikon nama="bantuan" ukuran="w-3.5 h-3.5" />
+                        <span>Cara pakai: <b>Tarik dari SIRUS</b> → <b>Sahkan &amp; Posting</b> → <b>Neraca Saldo</b> → <b>Kunci</b></span>
+                        <x-ikon nama="berikutnya" ukuran="w-3.5 h-3.5" class="ml-auto transition-transform group-open:rotate-90 motion-reduce:transition-none" />
+                    </summary>
+                    <ul class="pl-5 mt-2 space-y-1 list-disc">
+                        <li>Ikuti tombol <b>hijau</b> = langkah berikutnya di baris itu. Abu = aksi rutin, garis = hanya melihat, kuning = perlu alasan.</li>
+                        <li><b>Kunci berurutan</b> dari bulan terlama (atas ke bawah); <b>Buka Kunci</b> dari bulan terkunci terbaru (bawah ke atas). Tombol yang belum gilirannya tampil pudar dengan alasannya.</li>
+                        <li><b>Tarik ulang</b> kapan saja bila data SIRUS berubah — hasil tarikan lama tetap disimpan. Kolom Versi Disahkan menandai tarikan terbaru <i>sama</i> / <i>berbeda</i>.</li>
+                        <li>Selama periode Buka, versi lain boleh disahkan (<b>Ganti Versi</b>; posting lama dibatalkan, tetap tersimpan).</li>
+                        <li>Bulan terkunci tetap bisa Tarik ulang untuk dicek (buku tidak berubah); bila berbeda, koreksi lewat <b>Jurnal Umum</b> di bulan yang masih Buka.</li>
+                        <li>Ketik tahun (mis. 2025) untuk menarik data tahun lama.</li>
+                    </ul>
+                    <p class="mt-2"><a href="{{ route('panduan.cara-pakai') }}#bulanan" wire:navigate class="font-semibold underline">Panduan lengkap: Cara Pakai SIKEU</a></p>
+                </details>
             </div>
 
             @if (!$this->tahunSah())
@@ -476,6 +515,13 @@ new class extends Component {
                     @endcan
                 </div>
             @elseif ($this->tahunAda)
+                @if ($this->sebelumTahunMulai)
+                    <div role="status" class="flex gap-2 px-4 py-3 mb-3 text-sm rounded-lg bg-info-tint text-info-deep dark:bg-blue-900/30 dark:text-blue-200">
+                        <x-ikon nama="bantuan" ukuran="w-4 h-4" class="mt-0.5 shrink-0" />
+                        <p>Tahun {{ $tahun }} sebelum tahun pertama SIKEU ({{ SaldoAwal::tahunMulai() }}) — <b>hanya untuk dicek</b>: boleh Tarik dari SIRUS &amp; Bandingkan Versi, tetapi tidak disahkan / dibukukan,
+                            karena saldonya sudah tercakup di <a href="{{ route('buku-besar.saldo-awal') }}" wire:navigate class="font-semibold underline">Saldo Awal {{ SaldoAwal::tahunMulai() }}</a>.</p>
+                    </div>
+                @endif
                 <div class="overflow-x-auto bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                     <table class="ds-table ds-table-entri">
                         <thead>
@@ -553,7 +599,7 @@ new class extends Component {
                                                     </x-secondary-button>
                                                 @endcan
                                             @endif
-                                            @if ($row['status'] === 'B' && count($row['versi_list']) > 0 && $bebas)
+                                            @if ($row['status'] === 'B' && count($row['versi_list']) > 0 && $bebas && !$this->sebelumTahunMulai)
                                                 @can('jurnal.posting')
                                                     @if ($row['versi_sah'])
                                                         <x-secondary-button type="button" class="px-3 py-1.5 text-sm" wire:click="bukaPosting('{{ $row['periode'] }}')">
@@ -674,6 +720,20 @@ new class extends Component {
                                 {{ count($this->akunBelumSiap) }} akun SIRUS belum siap: {{ implode(', ', array_slice($this->akunBelumSiap, 0, 15)) }}{{ count($this->akunBelumSiap) > 15 ? ', ...' : '' }}.
                                 Lengkapi di <a href="{{ route('master.peta-akun', ['status' => 'MASALAH']) }}" wire:navigate class="underline">Peta Akun SIRUS</a>.
                             </p>
+                        @endif
+                        @if ($this->akunDiabaikan !== [])
+                            <div class="flex gap-2 px-3 py-2 mt-3 text-sm rounded-lg bg-info-tint text-info-deep dark:bg-blue-900/30 dark:text-blue-200">
+                                <x-ikon nama="bantuan" ukuran="w-4 h-4" class="mt-0.5 shrink-0" />
+                                <div>
+                                    <p>{{ count($this->akunDiabaikan) }} akun SIRUS <b>diabaikan</b> — transaksinya (kedua sisi) tidak dibukukan dan harus dicatat sendiri di SIKEU:</p>
+                                    <ul class="pl-5 mt-1 list-disc">
+                                        @foreach ($this->akunDiabaikan as $akun)
+                                            <li wire:key="abaikan-{{ $akun['acc'] }}"><span class="font-mono text-xs">{{ $akun['acc'] }}</span> {{ $akun['nama'] }} — D Rp {{ Format::uang($akun['debit']) }} / K Rp {{ Format::uang($akun['kredit']) }}</li>
+                                        @endforeach
+                                    </ul>
+                                    <a href="{{ route('master.peta-akun', ['status' => 'DIABAIKAN']) }}" wire:navigate class="underline">Atur di Peta Akun SIRUS</a>
+                                </div>
+                            </div>
                         @endif
                     </x-border-form>
                 @endif
