@@ -83,8 +83,8 @@ class AppMenu
             $entry(['group' => 'Pembukuan', 'groupOrder' => 1, 'order' => 7, 'route' => 'buku-besar.buku-besar', 'title' => 'Buku Besar', 'desc' => 'Mutasi & saldo berjalan per akun, rinci sampai transaksi SIRUS', 'izin' => 'laporan.lihat', 'badge' => 'BB']),
 
             // ── 2. Laporan Keuangan ────────────────────────────────────
-            $entry(['group' => 'Laporan Keuangan', 'groupOrder' => 2, 'order' => 1, 'route' => 'laporan.neraca', 'title' => 'Neraca', 'desc' => 'Laporan posisi keuangan per akhir bulan vs 1 Januari - cek Aset = Liabilitas + Ekuitas', 'izin' => 'laporan.lihat', 'badge' => 'NRC']),
-            $entry(['group' => 'Laporan Keuangan', 'groupOrder' => 2, 'order' => 2, 'route' => 'laporan.laba-rugi', 'title' => 'Laba Rugi', 'desc' => 'Laporan laba rugi bulan berjalan & kumulatif - susunan dari template laporan', 'izin' => 'laporan.lihat', 'badge' => 'LR']),
+            $entry(['group' => 'Laporan Keuangan', 'groupOrder' => 2, 'order' => 1, 'route' => 'laporan.laba-rugi', 'title' => 'Laba Rugi', 'desc' => 'Laporan laba rugi bulan berjalan & kumulatif - susunan dari template laporan', 'izin' => 'laporan.lihat', 'badge' => 'LR']),
+            $entry(['group' => 'Laporan Keuangan', 'groupOrder' => 2, 'order' => 2, 'route' => 'laporan.neraca', 'title' => 'Neraca', 'desc' => 'Laporan posisi keuangan per akhir bulan vs 1 Januari - cek Aset = Liabilitas + Ekuitas', 'izin' => 'laporan.lihat', 'badge' => 'NRC']),
 
             // ── 3. Data Induk (urutan menyiapkan) ──────────────────────
             $entry(['group' => 'Data Induk', 'groupOrder' => 3, 'order' => 1, 'route' => 'master.format-kode', 'title' => 'Format Kode Akun', 'desc' => 'Jumlah tingkat, digit per tingkat, pemisah & nomor akun kontra', 'izin' => 'laporan.lihat', 'badge' => 'FK']),
