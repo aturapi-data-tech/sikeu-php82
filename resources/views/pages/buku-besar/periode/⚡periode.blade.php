@@ -9,8 +9,11 @@ use App\Support\Format;
 use App\Support\SnapshotJurnal;
 
 /**
- * PERIODE & POSTING — tahun buku, 12 periode, sahkan versi snapshot SIRUS + posting ke buku besar, kunci / buka kunci.
- * Logika di App\Support\BukuBesar. Hak: lihat = laporan.lihat (menu), posting = jurnal.posting, buka tahun & kunci = periode.kunci.
+ * PERIODE & POSTING — tahun buku, 12 periode, ambil snapshot, sahkan versi + posting ke buku besar, kunci / buka kunci.
+ * Tahun diketik bebas (mis. 2025) supaya tahun lama bisa diproses mundur. "Proses Setahun" = antrean: tiap bulan yang
+ * belum diposting (sampai bulan berjalan) diambil snapshotnya dari SIRUS lalu disahkan & diposting otomatis; digerakkan
+ * wire:poll (pola Snapshot Jurnal) supaya tidak ada request panjang. Logika di App\Support\BukuBesar & SnapshotJurnal.
+ * Hak: lihat = laporan.lihat (menu), ambil = snapshot.ambil, posting = jurnal.posting, buka tahun & kunci = periode.kunci.
  */
 new class extends Component {
     #[Url(as: 'tahun', except: '')]
@@ -24,37 +27,210 @@ new class extends Component {
     public string $periodeBuka = '';
     public string $alasanBuka = '';
 
+    /** Pengambilan snapshot yang sedang berjalan di halaman ini (wire:poll aktif selama tidak null) */
+    public ?int $snapIdProses = null;
+    public string $periodeProses = '';
+
+    /** Proses Setahun: periode yang masih menunggu (urut terlama) + ringkasan yang sudah selesai */
+    public bool $modeAntrean = false;
+    public array $antrean = [];
+    public array $hasilAntrean = [];
+
     public function mount(): void
     {
-        if (!preg_match('/^\d{4}$/', $this->tahun)) {
+        if (!$this->tahunSah()) {
             $this->tahun = (string) (DB::table('sikeumst_tahun_bukus')->max('tahun') ?? now()->format('Y'));
+        }
+        $this->lanjutkanYangTertinggal();
+    }
+
+    public function tahunSah(): bool
+    {
+        return (bool) preg_match('/^\d{4}$/', $this->tahun) && (int) $this->tahun >= 2000 && (int) $this->tahun <= 2100;
+    }
+
+    public function updatedTahun(): void
+    {
+        $this->tahun = trim($this->tahun);
+        $this->segarkan();
+        $this->lanjutkanYangTertinggal();
+    }
+
+    public function geserTahun(int $langkah): void
+    {
+        if ($this->snapIdProses !== null || !$this->tahunSah()) {
+            return;
+        }
+        $this->tahun = (string) ((int) $this->tahun + ($langkah < 0 ? -1 : 1));
+        $this->updatedTahun();
+    }
+
+    /** Snapshot tahun ini yang masih berstatus Proses (tab sempat ditutup) → lanjutkan polling. */
+    private function lanjutkanYangTertinggal(): void
+    {
+        if ($this->snapIdProses !== null || !$this->tahunSah() || !auth()->user()?->can('snapshot.ambil')) {
+            return;
+        }
+        $tertinggal = DB::table('sikeutxn_snap_hdrs')->where('periode', 'like', $this->tahun . '%')
+            ->where('status', SnapshotJurnal::STATUS_PROSES)->orderBy('periode')->first(['snap_id', 'periode']);
+        if ($tertinggal) {
+            $this->snapIdProses = (int) $tertinggal->snap_id;
+            $this->periodeProses = (string) $tertinggal->periode;
         }
     }
 
     #[Computed]
     public function tahunAda(): bool
     {
-        return DB::table('sikeumst_tahun_bukus')->where('tahun', (int) $this->tahun)->exists();
-    }
-
-    #[Computed]
-    public function tahunList(): array
-    {
-        $tahunList = DB::table('sikeumst_tahun_bukus')->orderBy('tahun')->pluck('tahun')->map(fn ($tahun) => (string) $tahun)->all();
-        $tahunSnapshot = DB::table('sikeutxn_snap_hdrs')->selectRaw('DISTINCT SUBSTR(periode, 1, 4) AS tahun')->pluck('tahun')->all();
-
-        return collect(array_merge($tahunList, $tahunSnapshot, [now()->format('Y'), $this->tahun]))->unique()->sort()->values()->all();
+        return $this->tahunSah() && DB::table('sikeumst_tahun_bukus')->where('tahun', (int) $this->tahun)->exists();
     }
 
     #[Computed]
     public function periodeList(): array
     {
-        return (new BukuBesar())->periodeList((int) $this->tahun);
+        return $this->tahunSah() ? (new BukuBesar())->periodeList((int) $this->tahun) : [];
+    }
+
+    /** Bulan yang akan diproses "Proses Setahun": Buka, belum diposting, tidak di masa depan. */
+    #[Computed]
+    public function periodeBelumDiposting(): array
+    {
+        $bulanIni = now()->format('Ym');
+
+        return collect($this->periodeList)
+            ->filter(fn (array $row) => $row['status'] === BukuBesar::STATUS_BUKA && !$row['versi_sah'] && $row['periode'] <= $bulanIni)
+            ->pluck('periode')->values()->all();
+    }
+
+    #[Computed]
+    public function kemajuanProses(): ?array
+    {
+        return $this->snapIdProses ? (new SnapshotJurnal())->kemajuan($this->snapIdProses) : null;
     }
 
     private function segarkan(): void
     {
-        unset($this->periodeList, $this->tahunAda, $this->tahunList);
+        unset($this->periodeList, $this->tahunAda, $this->periodeBelumDiposting, $this->kemajuanProses);
+    }
+
+    // ─── Ambil snapshot & Proses Setahun ──────────────────────────────────────
+    public function ambilSnapshot(string $periode): void
+    {
+        abort_unless(auth()->user()?->can('snapshot.ambil'), 403);
+        if ($this->snapIdProses !== null) {
+            $this->dispatch('toast', type: 'error', message: 'Masih ada pengambilan yang berjalan — tunggu selesai.');
+            return;
+        }
+        if (!str_starts_with($periode, $this->tahun) || $periode > now()->format('Ym')) {
+            $this->dispatch('toast', type: 'error', message: 'Periode tidak sah / masih di masa depan.');
+            return;
+        }
+        try {
+            $this->snapIdProses = (new SnapshotJurnal())->mulai($periode, auth()->id());
+            $this->periodeProses = $periode;
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal memulai: ' . $exception->getMessage());
+        }
+        $this->segarkan();
+    }
+
+    public function prosesSetahun(): void
+    {
+        abort_unless(auth()->user()?->can('snapshot.ambil') && auth()->user()?->can('jurnal.posting'), 403);
+        if ($this->snapIdProses !== null) {
+            $this->dispatch('toast', type: 'error', message: 'Masih ada pengambilan yang berjalan — tunggu selesai.');
+            return;
+        }
+        $this->antrean = $this->periodeBelumDiposting;
+        $this->hasilAntrean = [];
+        if ($this->antrean === []) {
+            $this->dispatch('toast', type: 'info', message: 'Semua bulan sampai bulan berjalan sudah diposting.');
+            return;
+        }
+        $this->modeAntrean = true;
+        $this->jalankanAntrean();
+    }
+
+    /** Ambil bulan berikutnya dari antrean: pakai versi selesai terakhir bila sudah ada, kalau belum mulai ambil snapshot. */
+    private function jalankanAntrean(): void
+    {
+        while ($this->modeAntrean && $this->antrean !== []) {
+            $periode = array_shift($this->antrean);
+            $versiList = collect($this->periodeList)->firstWhere('periode', $periode)['versi_list'] ?? [];
+            if ($versiList !== []) {
+                if (!$this->postingAntrean($periode, (int) end($versiList)['snap_id'])) {
+                    return;
+                }
+                $this->segarkan();
+                continue;
+            }
+            try {
+                $this->snapIdProses = (new SnapshotJurnal())->mulai($periode, auth()->id());
+                $this->periodeProses = $periode;
+            } catch (\Throwable $exception) {
+                $this->hentikanAntrean('Gagal memulai ' . SnapshotJurnal::labelPeriode($periode) . ': ' . $exception->getMessage());
+            }
+            return;
+        }
+        if ($this->modeAntrean) {
+            $this->modeAntrean = false;
+            $this->dispatch('toast', type: 'success', message: 'Proses setahun selesai: ' . count($this->hasilAntrean) . ' bulan diposting. Periksa Neraca Saldo sebelum mengunci.');
+        }
+    }
+
+    private function postingAntrean(string $periode, int $snapId): bool
+    {
+        try {
+            $hasil = (new BukuBesar())->sahkanDanPosting($snapId, auth()->id());
+            $this->hasilAntrean[] = ['periode' => $periode, 'jurnal' => $hasil['jurnal'], 'debit' => $hasil['debit']];
+
+            return true;
+        } catch (\Throwable $exception) {
+            $this->hentikanAntrean('Posting ' . SnapshotJurnal::labelPeriode($periode) . ' gagal: ' . $exception->getMessage());
+
+            return false;
+        }
+    }
+
+    public function hentikanAntrean(?string $pesan = null): void
+    {
+        $this->modeAntrean = false;
+        $this->antrean = [];
+        $this->dispatch('toast', type: $pesan ? 'error' : 'info', message: $pesan ?? 'Antrean dihentikan. Pengambilan yang sedang berjalan tetap diselesaikan, tanpa posting otomatis.');
+    }
+
+    public function lanjutkanProses(): void
+    {
+        if ($this->snapIdProses === null || !auth()->user()?->can('snapshot.ambil')) {
+            return;
+        }
+        $kemajuan = (new SnapshotJurnal())->prosesBerikut($this->snapIdProses, 5);
+        $snapId = $this->snapIdProses;
+        $periode = $this->periodeProses;
+        if ($kemajuan['status'] === SnapshotJurnal::STATUS_SELESAI) {
+            $this->snapIdProses = null;
+            $this->periodeProses = '';
+            $this->segarkan();
+            if ($this->modeAntrean) {
+                if ($this->postingAntrean($periode, $snapId)) {
+                    $this->segarkan();
+                    $this->jalankanAntrean();
+                }
+            } else {
+                $this->dispatch('toast', type: 'success', message: 'Snapshot ' . SnapshotJurnal::labelPeriode($periode) . ' selesai — silakan Sahkan & Posting.');
+            }
+        }
+        if ($kemajuan['status'] === SnapshotJurnal::STATUS_GAGAL) {
+            $this->snapIdProses = null;
+            $this->periodeProses = '';
+            $pesan = 'Snapshot ' . SnapshotJurnal::labelPeriode($periode) . ' gagal: ' . ($kemajuan['pesan'] ?? 'galat tak dikenal');
+            if ($this->modeAntrean) {
+                $this->hentikanAntrean($pesan);
+            } else {
+                $this->dispatch('toast', type: 'error', message: $pesan);
+            }
+        }
+        $this->segarkan();
     }
 
     public function bukaTahun(): void
@@ -75,7 +251,7 @@ new class extends Component {
         abort_unless(auth()->user()?->can('jurnal.posting'), 403);
         $baris = collect($this->periodeList)->firstWhere('periode', $periode);
         if (!$baris || $baris['versi_list'] === []) {
-            $this->dispatch('toast', type: 'error', message: 'Belum ada snapshot selesai untuk periode ini — ambil dulu di Cutoff Jurnal › Snapshot Jurnal.');
+            $this->dispatch('toast', type: 'error', message: 'Belum ada snapshot selesai untuk periode ini — klik Ambil Snapshot dulu.');
             return;
         }
         $this->periodePosting = $periode;
@@ -167,22 +343,89 @@ new class extends Component {
         <div class="px-6 pt-2 pb-6 space-y-4">
 
             {{-- TOOLBAR --}}
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div class="w-full sm:w-40">
-                    <x-input-label for="tahun" value="Tahun Buku" />
-                    <x-select-input id="tahun" wire:model.live="tahun" class="mt-1">
-                        @foreach ($this->tahunList as $pilihanTahun)
-                            <option value="{{ $pilihanTahun }}">{{ $pilihanTahun }}</option>
-                        @endforeach
-                    </x-select-input>
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div class="flex flex-wrap items-end gap-3">
+                    <div>
+                        <x-input-label for="tahun" value="Tahun Buku" />
+                        <div class="flex items-center gap-1 mt-1">
+                            <x-secondary-button type="button" wire:click="geserTahun(-1)" :disabled="$snapIdProses !== null" class="px-3" aria-label="Tahun sebelumnya">‹</x-secondary-button>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                    <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <x-text-input id="tahun" type="text" inputmode="numeric" maxlength="4" wire:model.live.debounce.500ms="tahun"
+                                    :disabled="$snapIdProses !== null" placeholder="yyyy" class="block pl-10 w-28" />
+                            </div>
+                            <x-secondary-button type="button" wire:click="geserTahun(1)" :disabled="$snapIdProses !== null" class="px-3" aria-label="Tahun berikutnya">›</x-secondary-button>
+                        </div>
+                    </div>
+                    @if ($this->tahunAda && $this->periodeBelumDiposting !== [] && !$modeAntrean && $snapIdProses === null)
+                        @if (auth()->user()?->can('snapshot.ambil') && auth()->user()?->can('jurnal.posting'))
+                            <x-confirm-button variant="primary" action="prosesSetahun()"
+                                title="Proses {{ count($this->periodeBelumDiposting) }} Bulan Tahun {{ $tahun }}"
+                                message="Untuk {{ count($this->periodeBelumDiposting) }} bulan yang belum diposting ({{ SnapshotJurnal::labelPeriode($this->periodeBelumDiposting[0]) }} s/d {{ SnapshotJurnal::labelPeriode(collect($this->periodeBelumDiposting)->last()) }}): ambil snapshot dari SIRUS (kira-kira 40 detik per bulan; versi yang sudah ada dipakai), lalu sahkan & posting otomatis. Biarkan halaman terbuka sampai selesai. Periode TIDAK dikunci otomatis.">
+                                Proses Setahun ({{ count($this->periodeBelumDiposting) }} bulan)
+                            </x-confirm-button>
+                        @endif
+                    @endif
                 </div>
-                <div class="px-4 py-2 text-xs rounded-lg bg-info-tint text-info-deep dark:bg-blue-900/30 dark:text-blue-200 sm:max-w-3xl">
-                    Alur: ambil snapshot (Cutoff Jurnal) → <b>Sahkan & Posting</b> versi yang dipakai → periksa di Neraca Saldo → <b>Kunci</b>.
+                <div class="px-4 py-2 text-xs rounded-lg bg-info-tint text-info-deep dark:bg-blue-900/30 dark:text-blue-200 lg:max-w-2xl">
+                    Alur: <b>Ambil Snapshot</b> → <b>Sahkan & Posting</b> → periksa di Neraca Saldo → <b>Kunci</b>. Ketik tahun (mis. 2025) untuk memproses tahun lama.
                     Selama periode Buka, versi lain boleh disahkan (posting lama dibatalkan, tetap tersimpan). Kunci berurutan dari bulan terlama.
                 </div>
             </div>
 
-            @if (!$this->tahunAda)
+            @if (!$this->tahunSah())
+                <p role="alert" class="text-sm text-fg-danger-strong">Tahun harus 4 digit antara 2000 dan 2100.</p>
+            @endif
+
+            {{-- KEMAJUAN PROSES --}}
+            @if ($snapIdProses !== null || $modeAntrean)
+                @php
+                    $kemajuan = $this->kemajuanProses;
+                    $jumlahCabang = max(1, (int) ($kemajuan['jumlah_cabang'] ?? 1));
+                    $persen = $kemajuan ? (int) floor((int) $kemajuan['cabang_selesai'] / $jumlahCabang * 100) : 0;
+                @endphp
+                <div @if ($snapIdProses !== null) wire:poll.2s="lanjutkanProses" @endif
+                    class="p-4 border rounded-xl border-blue-200 bg-blue-50 dark:border-blue-800/40 dark:bg-blue-900/20" role="status" aria-live="polite">
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                            <p class="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                                @if ($snapIdProses !== null)
+                                    Mengambil snapshot {{ SnapshotJurnal::labelPeriode($periodeProses) }} — {{ (int) ($kemajuan['cabang_selesai'] ?? 0) }} dari {{ $jumlahCabang }} cabang jurnal ({{ $persen }}%)
+                                @else
+                                    Memposting...
+                                @endif
+                            </p>
+                            @if ($modeAntrean)
+                                <p class="mt-1 text-xs text-blue-800 dark:text-blue-200">
+                                    Proses setahun: {{ count($hasilAntrean) }} bulan diposting{{ $antrean !== [] ? ' · menunggu: ' . collect($antrean)->map(fn ($periode) => SnapshotJurnal::labelPeriode($periode))->implode(', ') : '' }}
+                                </p>
+                            @endif
+                        </div>
+                        @if ($modeAntrean)
+                            <x-secondary-button type="button" wire:click="hentikanAntrean" class="px-3 py-1.5 text-xs">Hentikan antrean</x-secondary-button>
+                        @endif
+                    </div>
+                    @if ($snapIdProses !== null)
+                        <div class="w-full h-2 mt-2 overflow-hidden bg-white rounded-full dark:bg-gray-800">
+                            <div class="h-2 transition-all bg-blue-600 rounded-full motion-reduce:transition-none" style="width: {{ $persen }}%"></div>
+                        </div>
+                    @endif
+                    <p class="mt-2 text-xs text-blue-800 dark:text-blue-200">Biarkan halaman terbuka. Bila tertutup, buka lagi halaman ini untuk melanjutkan pengambilan.</p>
+                </div>
+            @endif
+
+            @if ($hasilAntrean !== [] && !$modeAntrean)
+                <div role="status" class="px-4 py-2 text-sm rounded-lg bg-success-soft text-fg-success-strong">
+                    Diposting otomatis: {{ collect($hasilAntrean)->map(fn ($hasil) => SnapshotJurnal::labelPeriode($hasil['periode']) . ' (' . $hasil['jurnal'] . ' jurnal)')->implode(', ') }}.
+                    <a href="{{ route('buku-besar.neraca-saldo', ['periode' => end($hasilAntrean)['periode']]) }}" wire:navigate class="font-medium underline">Periksa Neraca Saldo</a>
+                </div>
+            @endif
+
+            @if ($this->tahunSah() && !$this->tahunAda)
                 <div class="p-6 text-center border border-dashed rounded-2xl border-hairline bg-canvas dark:bg-gray-800 dark:border-gray-700">
                     <p class="text-sm text-body dark:text-gray-300">Tahun buku {{ $tahun }} belum dibuka.</p>
                     @can('periode.kunci')
@@ -195,7 +438,7 @@ new class extends Component {
                         <p class="mt-2 text-xs text-muted">Minta pemegang hak "periode.kunci" membuka tahun buku.</p>
                     @endcan
                 </div>
-            @else
+            @elseif ($this->tahunAda)
                 <div class="overflow-x-auto bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                     <table class="ds-table ds-table-entri">
                         <thead>
@@ -238,16 +481,28 @@ new class extends Component {
                                         @endif
                                     </td>
                                     <td class="ds-c">
-                                        @if (count($row['versi_list']) > 0)
+                                        @if ($periodeProses === $row['periode'])
+                                            <span class="text-xs font-medium text-blue-700 dark:text-blue-300">sedang diambil...</span>
+                                        @elseif (count($row['versi_list']) > 0)
                                             <span class="text-xs">{{ count($row['versi_list']) }} versi</span>
                                         @else
-                                            <a href="{{ route('cutoff.snapshot-jurnal') }}" wire:navigate class="text-xs text-muted hover:underline">belum ada</a>
+                                            <span class="text-xs text-muted">belum ada</span>
+                                        @endif
+                                        @if ($row['status'] === 'B' && $row['periode'] <= now()->format('Ym') && $snapIdProses === null && !$modeAntrean)
+                                            @can('snapshot.ambil')
+                                                <div class="mt-1">
+                                                    <button type="button" wire:click="ambilSnapshot('{{ $row['periode'] }}')" wire:loading.attr="disabled" wire:target="ambilSnapshot('{{ $row['periode'] }}')"
+                                                        class="text-xs font-medium rounded text-brand-green hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green dark:text-brand-lime">
+                                                        {{ count($row['versi_list']) > 0 ? '+ Ambil versi baru' : 'Ambil Snapshot' }}
+                                                    </button>
+                                                </div>
+                                            @endcan
                                         @endif
                                     </td>
                                     <td class="text-right tabular-nums">{{ $row['total_debit'] > 0 ? Format::uang($row['total_debit']) : '-' }}</td>
                                     <td class="ds-c">
                                         <div class="flex flex-wrap justify-end gap-2">
-                                            @if ($row['status'] === 'B' && count($row['versi_list']) > 0)
+                                            @if ($row['status'] === 'B' && count($row['versi_list']) > 0 && $snapIdProses === null && !$modeAntrean)
                                                 @can('jurnal.posting')
                                                     <x-primary-button type="button" class="px-3 py-1.5 text-sm" wire:click="bukaPosting('{{ $row['periode'] }}')">
                                                         {{ $row['versi_sah'] ? 'Ganti Versi' : 'Sahkan & Posting' }}
