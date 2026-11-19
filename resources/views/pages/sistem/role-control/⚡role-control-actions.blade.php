@@ -12,7 +12,8 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 /**
  * Modal CRUD role (Spatie) + permission yang melekat.
- * Role 'Admin' dikunci: tidak bisa dihapus / diganti nama (cegah semua admin terkunci keluar).
+ * Role 'Admin' dikunci: tidak bisa dihapus / diganti nama (cegah semua admin terkunci keluar) dan selalu boleh semua.
+ * Permission = hak akses aplikasi (katalog + keterangan: App\Support\HakAkses); dicentang di sini per role.
  */
 new class extends Component {
     use WithRenderVersioningTrait;
@@ -294,7 +295,7 @@ new class extends Component {
                                 <div class="p-4 text-sm text-center border border-gray-300 border-dashed text-muted dark:text-gray-400 dark:border-gray-700 rounded-xl">
                                     Belum ada permission untuk guard
                                     <code class="font-mono">{{ $form['guard_name'] }}</code>.
-                                    Hak akses saat ini cukup diatur lewat role.
+                                    Jalankan php artisan migrate untuk membuat hak akses awal.
                                 </div>
                             @else
                                 <div class="flex items-center justify-between pb-2 border-b border-hairline dark:border-gray-700">
@@ -325,7 +326,7 @@ new class extends Component {
                                                     : 'border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60' }}">
                                             <div class="flex-1 min-w-0">
                                                 <div class="text-sm font-medium truncate text-ink dark:text-gray-200">{{ $perm->name }}</div>
-                                                <div class="text-[11px] text-muted-soft font-mono">id: {{ $perm->id }} · guard: {{ $perm->guard_name }}</div>
+                                                <div class="text-[11px] text-muted dark:text-gray-400">{{ \App\Support\HakAkses::label($perm->name) ?: 'guard: ' . $perm->guard_name }}</div>
                                             </div>
                                             <div aria-hidden="true"
                                                 class="relative h-6 transition rounded-full w-11 shrink-0 {{ $isActive ? 'bg-brand-green dark:bg-brand-lime' : 'bg-gray-300 dark:bg-gray-600' }}">

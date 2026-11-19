@@ -2,13 +2,15 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\CekAksesMenu;
 use App\Services\AppMenu;
-use App\Support\AksiRole;
+use App\Support\HakAkses;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,17 +33,14 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        // Gate aksi yang dibatasi — daftar role dari SATU sumber berklaster
-        // (App\Support\AksiRole). Ubah role cukup di file itu; nama Gate di bawah
-        // yang dipakai blade (@can) & server (->can()) tidak perlu ikut berubah.
-        // Contoh:
-        // Gate::define('dokumen.hapus', fn ($user) => $user->hasAnyRole(AksiRole::DOKUMEN_HAPUS));
-        Gate::define('laporan.lihat', fn ($user) => $user->hasAnyRole(AksiRole::LAPORAN_LIHAT));
-        Gate::define('snapshot.ambil', fn ($user) => $user->hasAnyRole(AksiRole::SNAPSHOT_AMBIL));
-        Gate::define('jurnal.entri', fn ($user) => $user->hasAnyRole(AksiRole::JURNAL_ENTRI));
-        Gate::define('periode.kunci', fn ($user) => $user->hasAnyRole(AksiRole::PERIODE_KUNCI));
-        Gate::define('tutupBuku.jalankan', fn ($user) => $user->hasAnyRole(AksiRole::TUTUP_BUKU));
-        Gate::define('akun.kelola', fn ($user) => $user->hasAnyRole(AksiRole::AKUN_KELOLA));
+        // Hak akses = permission Spatie yang dicentang per role di Role Control (katalog: App\Support\HakAkses).
+        // Spatie mendaftarkan tiap permission ke Gate, jadi @can('akun.kelola') / ->can() langsung jalan.
+        // Role super (Admin) selalu lolos supaya tidak ada yang bisa mengunci semua admin keluar.
+        Gate::before(fn ($user) => $user->hasRole(HakAkses::PERAN_SUPER) ? true : null);
+
+        // Middleware izin menu juga dijalankan ulang di setiap aksi Livewire (/livewire/update), tidak hanya saat
+        // halaman dibuka — hak akses yang dicabut di Role Control langsung berlaku untuk tab yang masih terbuka.
+        Livewire::addPersistentMiddleware([CekAksesMenu::class]);
 
         // Blade directive untuk render path TTD user (dua format kolom
         // myuser_ttd_image: filename saja vs legacy 'UserTtd/abc.png') —
@@ -51,14 +50,10 @@ class AppServiceProvider extends ServiceProvider
             return "<?php echo \\App\\Support\\TtdUser::pathWeb($expression); ?>";
         });
 
-        // Share $sidebarMenus (grouped + filtered by user role) ke sidebar layout.
+        // Share $sidebarMenus (grouped + filtered by hak akses user) ke sidebar layout.
         // Tidak query DB di guest pages — guard via auth check.
         View::composer('layouts.app-sidebar', function ($view) {
-            $roles = auth()->check()
-                ? auth()->user()->getRoleNames()->map(fn($r) => trim(strtolower($r)))->values()->toArray()
-                : [];
-
-            $view->with('sidebarMenus', AppMenu::grouped($roles));
+            $view->with('sidebarMenus', AppMenu::grouped(auth()->user()));
         });
     }
 }

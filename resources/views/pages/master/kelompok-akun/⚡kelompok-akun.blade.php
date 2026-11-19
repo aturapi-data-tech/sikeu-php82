@@ -11,6 +11,16 @@ use Illuminate\Support\Facades\DB;
  * kelompok L dinolkan ke Saldo Laba saat tutup buku. Ubah lewat kelompok-akun-actions (gate akun.kelola).
  */
 new class extends Component {
+    public function openCreate(): void
+    {
+        $this->dispatch('master.kelompok-akun.openCreate');
+    }
+
+    public function requestDelete(string $kelompokId): void
+    {
+        $this->dispatch('master.kelompok-akun.requestDelete', kelompokId: $kelompokId);
+    }
+
     public function openEdit(string $kelompokId): void
     {
         $this->dispatch('master.kelompok-akun.openEdit', kelompokId: $kelompokId);
@@ -41,7 +51,7 @@ new class extends Component {
 
     <x-page-title
         title="Kelompok Akun"
-        subtitle="Setup akun Neraca & Laba Rugi — setiap akun ikut laporan kelompoknya (digit pertama kode akun)" />
+        subtitle="Setup akun Neraca & Laba Rugi — setiap akun ikut laporan kelompoknya (tingkat 1 kode akun)" />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-900">
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6">
@@ -49,8 +59,14 @@ new class extends Component {
             <div class="px-4 py-3 text-sm rounded-xl bg-info-tint text-info-deep dark:bg-blue-900/30 dark:text-blue-200">
                 <b>Neraca</b>: saldo akhir dibawa ke tahun berikutnya (aset, liabilitas, ekuitas).
                 <b>Laba Rugi</b>: dihitung per periode dan dinolkan ke Saldo Laba saat tutup buku (pendapatan, beban, pajak).
-                Kelompok yang akunnya sudah dijurnal tidak bisa dipindah laporan.
+                Kelompok yang akunnya sudah dijurnal tidak bisa dipindah laporan; kelompok hanya bisa dihapus selama masih kosong.
             </div>
+
+            @can('akun.kelola')
+                <div class="flex justify-end mt-3">
+                    <x-primary-button type="button" wire:click="openCreate">+ Tambah Kelompok</x-primary-button>
+                </div>
+            @endcan
 
             <div class="mt-4 flex flex-col flex-1 min-h-0 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                 <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-2xl">
@@ -84,7 +100,12 @@ new class extends Component {
                                     </td>
                                     @can('akun.kelola')
                                         <td class="ds-c">
-                                            <x-action-edit wire:click="openEdit('{{ $row->kelompok_id }}')" />
+                                            <div class="flex justify-end gap-2">
+                                                <x-action-edit wire:click="openEdit('{{ $row->kelompok_id }}')" />
+                                                <x-action-delete :action="'requestDelete(\'' . $row->kelompok_id . '\')'"
+                                                    title="Hapus Kelompok"
+                                                    message="Hapus kelompok {{ $row->kelompok_id }} {{ $row->nama }}? Hanya bisa bila kelompok belum berisi akun." />
+                                            </div>
                                         </td>
                                     @endcan
                                 </tr>

@@ -8,20 +8,16 @@ use Illuminate\Support\Facades\Route;
 /**
  * AppMenu — sumber tunggal definisi menu aplikasi (dashboard + sidebar).
  *
- * - `all()` mengembalikan semua entri (defensive: skip route yang tidak terdaftar)
- * - `forRoles($roles)` filter by role names (lowercase)
- * - `grouped(array $roles)` filter + sort + group by 'group' untuk render UI.
+ * Setiap entri punya 'izin' = nama permission (katalog App\Support\HakAkses) yang wajib dimiliki user, atau
+ * null = semua user yang sudah login. Siapa punya izin apa diatur di Sistem › Role Control, bukan di sini.
  *
- * Tambah/edit menu di method `definitions()` saja. Dashboard & sidebar otomatis ikut.
+ * - `all()`            semua entri (route yang tidak terdaftar dilewati)
+ * - `forUser($user)`   entri yang boleh dilihat user
+ * - `grouped($user)`   forUser + urut + kelompokkan per 'group' untuk render UI
+ * - `bolehBuka()`      dipakai middleware CekAksesMenu — halaman di menu tak bisa ditembus lewat URL
  */
 class AppMenu
 {
-    /**
-     * Penanda 'roles' untuk menu yang boleh dilihat SEMUA role (juga user tanpa role).
-     * Dipakai untuk menu yang memang terbuka bagi siapa pun yang sudah login (mis. panduan).
-     */
-    public const SEMUA_ROLE = '*';
-
     /** @return array<int, array<string, mixed>> */
     public static function all(): array
     {
@@ -36,51 +32,36 @@ class AppMenu
         return array_values(array_filter(self::definitions($entry)));
     }
 
-    /**
-     * Filter entries by role names (case-insensitive).
-     * Entri ber-roles ['*'] (SEMUA_ROLE) selalu lolos, apa pun role user.
-     *
-     * @param  array<int, string>  $userRoles
-     * @return array<int, array<string, mixed>>
-     */
-    public static function forRoles(array $userRoles): array
+    /** @return array<int, array<string, mixed>> */
+    public static function forUser(?object $user): array
     {
-        // trim() penting: nama role di DB pernah mengandung trailing space ('Manager Umum')
-        // → strtolower saja tidak match dan seluruh menu role tsb hilang.
-        $roles = array_map(fn($role) => trim(strtolower($role)), $userRoles);
-
         return array_values(array_filter(
             self::all(),
-            fn($menu) => in_array(self::SEMUA_ROLE, $menu['roles'], true) || !empty(array_intersect($menu['roles'], $roles)),
+            fn ($menu) => $menu['izin'] === null ? $user !== null : (bool) $user?->can($menu['izin']),
         ));
     }
 
-    /** Halaman di menu hanya untuk role yang tercantum; route di luar menu tidak dibatasi di sini (lihat CekAksesMenu). */
+    /** Halaman di menu hanya untuk user ber-izin; route di luar menu tidak dibatasi di sini (lihat CekAksesMenu). */
     public static function bolehBuka(string $route, ?object $user): bool
     {
         if (!collect(self::all())->contains('route', $route)) {
             return true;
         }
-        $roles = $user ? $user->getRoleNames()->all() : [];
 
-        return collect(self::forRoles($roles))->contains('route', $route);
+        return collect(self::forUser($user))->contains('route', $route);
     }
 
-    /**
-     * Sorted + grouped by 'group'. Cocok untuk render sidebar/dashboard.
-     *
-     * @param  array<int, string>  $userRoles
-     */
-    public static function grouped(array $userRoles): Collection
+    /** Sorted + grouped by 'group'. Cocok untuk render sidebar/dashboard. */
+    public static function grouped(?object $user): Collection
     {
-        return collect(self::forRoles($userRoles))
+        return collect(self::forUser($user))
             ->sortBy([['groupOrder', 'asc'], ['order', 'asc']])
             ->groupBy('group');
     }
 
     /**
      * Definisi semua menu. Helper $entry guard route existence + inject 'href'.
-     * Setiap entry: ['group','groupOrder','order','route','title','desc','roles','badge'].
+     * Setiap entry: ['group','groupOrder','order','route','title','desc','izin','badge'].
      *
      * @param  callable(array):?array  $entry
      * @return array<int, ?array<string, mixed>>
@@ -88,22 +69,23 @@ class AppMenu
     private static function definitions(callable $entry): array
     {
         return [
-            // Role ditulis huruf kecil: 'admin', 'manager keuangan', 'staf akuntansi', 'direksi'.
+            // 'izin' = permission (App\Support\HakAkses::DAFTAR); null = semua user login.
 
             // ── Master ─────────────────────────────────────────────────
-            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 0, 'route' => 'master.kelompok-akun', 'title' => 'Kelompok Akun', 'desc' => 'Setup akun Neraca & Laba Rugi per kelompok (digit pertama kode akun)', 'roles' => ['admin', 'manager keuangan', 'staf akuntansi', 'direksi'], 'badge' => 'N/L']),
-            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 1, 'route' => 'master.bagan-akun', 'title' => 'Bagan Akun', 'desc' => 'Daftar akun buku besar (SAK EP): tambah, ubah, nonaktifkan akun', 'roles' => ['admin', 'manager keuangan', 'staf akuntansi', 'direksi'], 'badge' => 'COA']),
-            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 2, 'route' => 'master.peta-akun', 'title' => 'Peta Akun SIRUS', 'desc' => 'Pasangan akun SIRUS ke akun SIKEU — posting snapshot ditolak bila ada yang belum dipetakan', 'roles' => ['admin', 'manager keuangan', 'staf akuntansi', 'direksi'], 'badge' => 'MAP']),
+            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 0, 'route' => 'master.kelompok-akun', 'title' => 'Kelompok Akun', 'desc' => 'Setup akun Neraca & Laba Rugi per kelompok (digit pertama kode akun)', 'izin' => 'laporan.lihat', 'badge' => 'N/L']),
+            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 1, 'route' => 'master.bagan-akun', 'title' => 'Bagan Akun', 'desc' => 'Daftar akun buku besar (SAK EP): tambah, ubah, nonaktifkan akun', 'izin' => 'laporan.lihat', 'badge' => 'COA']),
+            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 3, 'route' => 'master.format-kode', 'title' => 'Format Kode Akun', 'desc' => 'Jumlah tingkat, digit per tingkat, pemisah & nomor akun kontra', 'izin' => 'laporan.lihat', 'badge' => 'FMT']),
+            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 2, 'route' => 'master.peta-akun', 'title' => 'Peta Akun SIRUS', 'desc' => 'Pasangan akun SIRUS ke akun SIKEU — posting snapshot ditolak bila ada yang belum dipetakan', 'izin' => 'laporan.lihat', 'badge' => 'MAP']),
 
             // ── Cutoff Jurnal ──────────────────────────────────────────
-            $entry(['group' => 'Cutoff Jurnal', 'groupOrder' => 1, 'order' => 1, 'route' => 'cutoff.snapshot-jurnal', 'title' => 'Snapshot Jurnal', 'desc' => 'Ambil jurnal SIRUS satu bulan sebagai versi baru (cutoff) — versi lama tidak ditimpa', 'roles' => ['admin', 'manager keuangan', 'staf akuntansi'], 'badge' => 'SNP']),
-            $entry(['group' => 'Cutoff Jurnal', 'groupOrder' => 1, 'order' => 2, 'route' => 'cutoff.banding-versi', 'title' => 'Bandingkan Versi', 'desc' => 'Cari transaksi yang baru, hilang, atau berubah antara dua versi snapshot', 'roles' => ['admin', 'manager keuangan', 'staf akuntansi', 'direksi'], 'badge' => 'DIF']),
+            $entry(['group' => 'Cutoff Jurnal', 'groupOrder' => 1, 'order' => 1, 'route' => 'cutoff.snapshot-jurnal', 'title' => 'Snapshot Jurnal', 'desc' => 'Ambil jurnal SIRUS satu bulan sebagai versi baru (cutoff) — versi lama tidak ditimpa', 'izin' => 'snapshot.ambil', 'badge' => 'SNP']),
+            $entry(['group' => 'Cutoff Jurnal', 'groupOrder' => 1, 'order' => 2, 'route' => 'cutoff.banding-versi', 'title' => 'Bandingkan Versi', 'desc' => 'Cari transaksi yang baru, hilang, atau berubah antara dua versi snapshot', 'izin' => 'laporan.lihat', 'badge' => 'DIF']),
 
             // ── Sistem ─────────────────────────────────────────────────
-            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 0, 'route' => 'sistem.identitas', 'title' => 'Identitas Instansi', 'desc' => 'Logo, nama & profil instansi (kop cetakan, halaman depan)', 'roles' => ['admin'], 'badge' => 'ID']),
-            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 1, 'route' => 'sistem.user-control', 'title' => 'User Control', 'desc' => 'Kelola user login, role & tanda tangan', 'roles' => ['admin'], 'badge' => 'USR']),
-            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 2, 'route' => 'sistem.role-control', 'title' => 'Role Control', 'desc' => 'Kelola role & permission', 'roles' => ['admin'], 'badge' => 'ROL']),
-            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 3, 'route' => 'sistem.sambungan-sirus', 'title' => 'Sambungan SIRUS', 'desc' => 'Uji login API SIRUS (JWT), katalog cabang jurnal & bagan akun', 'roles' => ['admin'], 'badge' => 'DB']),
+            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 0, 'route' => 'sistem.identitas', 'title' => 'Identitas Instansi', 'desc' => 'Logo, nama & profil instansi (kop cetakan, halaman depan)', 'izin' => 'sistem.kelola', 'badge' => 'ID']),
+            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 1, 'route' => 'sistem.user-control', 'title' => 'User Control', 'desc' => 'Kelola user login, role & tanda tangan', 'izin' => 'sistem.kelola', 'badge' => 'USR']),
+            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 2, 'route' => 'sistem.role-control', 'title' => 'Role Control', 'desc' => 'Kelola role & permission', 'izin' => 'sistem.kelola', 'badge' => 'ROL']),
+            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 3, 'route' => 'sistem.sambungan-sirus', 'title' => 'Sambungan SIRUS', 'desc' => 'Uji login API SIRUS (JWT), katalog cabang jurnal & bagan akun', 'izin' => 'sistem.kelola', 'badge' => 'DB']),
         ];
     }
 }

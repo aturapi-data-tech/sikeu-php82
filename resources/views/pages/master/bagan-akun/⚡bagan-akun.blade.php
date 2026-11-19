@@ -6,9 +6,10 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
 use App\Support\BaganAkun;
+use App\Support\FormatKodeAkun;
 
 /**
- * BAGAN AKUN — daftar akun buku besar SIKEU (sikeumst_akuns) berbentuk pohon K.S.GG.DDD.
+ * BAGAN AKUN — daftar akun buku besar SIKEU (sikeumst_akuns) berbentuk pohon; format kode dari pengaturan (FormatKodeAkun).
  * Seluruh bagan (±300 akun) tampil sekaligus tanpa halaman, supaya hierarkinya terbaca utuh.
  * Ubah/tambah/nonaktif/hapus lewat komponen bagan-akun-actions (gate akun.kelola).
  */
@@ -141,7 +142,7 @@ new class extends Component {
 
     <x-page-title
         title="Bagan Akun"
-        subtitle="Akun buku besar SIKEU — kode K.S.GG.DDD, hanya akun Detail (tingkat 4) yang boleh dijurnal" />
+        subtitle="Akun buku besar — format kode {{ FormatKodeAkun::contoh() }} ({{ FormatKodeAkun::jumlahTingkat() }} tingkat), hanya akun Detail yang boleh dijurnal" />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-900">
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6">
@@ -221,11 +222,10 @@ new class extends Component {
                         <tbody>
                             @forelse ($this->rows as $row)
                                 @php
-                                    $indent = ['1' => 'pl-0', '2' => 'pl-4', '3' => 'pl-8', '4' => 'pl-12'][(string) $row->tingkat] ?? 'pl-12';
-                                    $gayaNama = match ((int) $row->tingkat) {
-                                        1 => 'font-bold uppercase text-ink dark:text-gray-100',
-                                        2 => 'font-semibold uppercase text-ink dark:text-gray-100',
-                                        3 => 'font-medium uppercase text-ink dark:text-gray-200',
+                                    $indent = 'padding-left: ' . ((int) $row->tingkat - 1) . 'rem';
+                                    $gayaNama = match (true) {
+                                        (int) $row->tingkat === 1 => 'font-bold uppercase text-ink dark:text-gray-100',
+                                        $row->tipe === 'H' => 'font-semibold uppercase text-ink dark:text-gray-100',
                                         default => 'text-body dark:text-gray-300',
                                     };
                                 @endphp
@@ -233,14 +233,14 @@ new class extends Component {
                                     class="{{ $row->aktif === '1' ? '' : 'opacity-60' }} {{ (int) $row->tingkat === 1 ? 'bg-surface-card dark:bg-gray-800' : '' }}">
                                     <td class="ds-td-token">{{ $row->akun_id }}</td>
                                     <td>
-                                        <div class="{{ $indent }} {{ $gayaNama }}">
+                                        <div style="{{ $indent }}" class="{{ $gayaNama }}">
                                             {{ $row->nama }}
                                             @if ((int) $row->tingkat === 1)
                                                 <x-badge class="ml-2 normal-case" :variant="$row->jenis_laporan === 'N' ? 'info' : 'purple'">{{ $row->jenis_laporan === 'N' ? 'Neraca' : 'Laba Rugi' }}</x-badge>
                                             @endif
                                         </div>
                                         @if ($row->keterangan)
-                                            <div class="{{ $indent }} text-xs text-muted dark:text-gray-400">{{ $row->keterangan }}</div>
+                                            <div style="{{ $indent }}" class="text-xs text-muted dark:text-gray-400">{{ $row->keterangan }}</div>
                                         @endif
                                     </td>
                                     <td class="ds-c">
@@ -276,7 +276,7 @@ new class extends Component {
                                         @endif
                                     </td>
                                     <td class="ds-c">
-                                        @if ((int) $row->tingkat >= 3)
+                                        @if ((int) $row->tingkat >= 2)
                                             @can('akun.kelola')
                                                 <x-toggle :current="$row->aktif" trueValue="1" falseValue="0"
                                                     wireClick="toggleAktif('{{ $row->akun_id }}')" />
@@ -284,19 +284,19 @@ new class extends Component {
                                                 <x-badge :variant="$row->aktif === '1' ? 'success' : 'gray'">{{ $row->aktif === '1' ? 'Aktif' : 'Nonaktif' }}</x-badge>
                                             @endcan
                                         @else
-                                            <span class="text-xs text-muted-soft">tetap</span>
+                                            <a href="{{ route('master.kelompok-akun') }}" wire:navigate class="text-xs text-muted hover:underline">kelompok</a>
                                         @endif
                                     </td>
                                     @can('akun.kelola')
                                         <td class="ds-c">
                                             <div class="flex justify-end gap-2">
-                                                @if (in_array((int) $row->tingkat, [2, 3], true) && $row->tipe === 'H' && $row->aktif === '1')
+                                                @if ($row->tipe === 'H' && $row->aktif === '1' && (int) $row->tingkat < FormatKodeAkun::jumlahTingkat())
                                                     <x-secondary-button type="button" class="px-2.5 py-1.5 text-sm"
                                                         wire:click="openCreate('{{ $row->akun_id }}')"
-                                                        title="Tambah {{ (int) $row->tingkat === 2 ? 'golongan' : 'akun detail' }} di bawah {{ $row->akun_id }}">+ Anak</x-secondary-button>
+                                                        aria-label="Tambah akun di bawah {{ $row->akun_id }}">+ Anak</x-secondary-button>
                                                 @endif
                                                 <x-action-edit wire:click="openEdit('{{ $row->akun_id }}')" />
-                                                @if ((int) $row->tingkat >= 3)
+                                                @if ((int) $row->tingkat >= 2)
                                                     <x-action-delete :action="'requestDelete(\'' . $row->akun_id . '\')'"
                                                         title="Hapus Akun"
                                                         message="Hapus akun {{ $row->akun_id }} {{ $row->nama }}? Akun yang sudah dipetakan, dijurnal, atau punya anak tidak bisa dihapus — nonaktifkan saja." />

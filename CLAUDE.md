@@ -28,8 +28,13 @@ Oracle 10g (yajra/laravel-oci8), Tailwind + Alpine, Spatie Permission.
    ambil ulang = versi baru. Pembanding (`App\Support\SnapshotJurnal::bandingkan`) bergantung pada itu (hasilnya di-cache).
    `kunci_baris` = sha1(cabang|label|akun|lawan|tanggal|shift) — nominal sengaja tidak masuk kunci.
 6. Halaman baru: daftarkan route di `routes/web.php` **dan** entri di `App\Services\AppMenu::definitions()`
-   (daftar role di sana = pembatas akses halaman, middleware `menu`). Aksi berisiko: konstanta di
-   `App\Support\AksiRole` + Gate di `AppServiceProvider`, dan guard server `->can()` di method-nya.
+   dengan `'izin'` = permission (pembatas akses halaman + aksi Livewire, middleware `menu` persistent).
+   **Jangan menulis nama role di kode** — hak akses = permission Spatie: tambah di `App\Support\HakAkses::DAFTAR`,
+   buat lewat migrasi, pakai `@can` / `->can()` + guard server di method-nya; pembagian ke role diatur user di Role Control.
+   Pengecualian tunggal: `HakAkses::PERAN_SUPER` ('Admin') selalu boleh semua.
+7. **Hal yang beda antar-instansi = pengaturan, bukan konstanta** (tabel `sikeumst_pengaturans`, DDL 04, kelas
+   `App\Support\Pengaturan`). Format kode akun dibaca lewat `App\Support\FormatKodeAkun` — jangan menulis
+   jumlah tingkat/digit/pemisah/nomor kontra di kode.
 
 ## Uji lokal
 

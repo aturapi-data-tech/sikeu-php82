@@ -5,13 +5,16 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Support\BaganAkun;
+use App\Support\FormatKodeAkun;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 /**
  * Modal tambah/ubah akun + aksi nonaktif & hapus untuk Bagan Akun. Semua aksi dijaga gate akun.kelola di server.
  *
  * Aturan:
- *   - Akun baru hanya di bawah header tingkat 2 (jadi golongan, Header) atau tingkat 3 (jadi rincian, Detail).
+ *   - Akun baru di bawah header mana pun selain tingkat terakhir; format kode dari pengaturan (FormatKodeAkun).
+ *     Tingkat terakhir selalu Detail, tingkat di atasnya boleh pilih Header/Detail.
+ *   - Tingkat 1 = kelompok: ditambah/dihapus di Master › Kelompok Akun; ubah namanya di sini ikut ke kelompok.
  *   - Kode, induk, tipe tidak bisa diubah setelah dibuat (kode dipakai FK jurnal/peta/saldo).
  *   - Akun yang sudah dijurnal / bersaldo: saldo normal & sifat kas dikunci.
  *   - Nonaktif detail ditolak bila masih jadi tujuan peta SIRUS; nonaktif header ditolak bila masih punya anak aktif.
@@ -30,6 +33,9 @@ new class extends Component {
     public int $tingkat = 4;
     public string $tipe = 'D';
     public bool $sudahDipakai = false;
+
+    /** Tipe boleh dipilih (tambah akun di bawah tingkat terakhir); di tingkat terakhir selalu Detail. */
+    public bool $tipeBebas = false;
 
     public function mount(): void
     {
@@ -103,15 +109,22 @@ new class extends Component {
             return;
         }
         $this->tingkat = $tingkatAnak;
-        $this->tipe = $tingkatAnak === 4 ? 'D' : 'H';
-        $this->form['akun_id'] = BaganAkun::saranKode($induk->akun_id, $tingkatAnak);
+        $this->tipeBebas = $tingkatAnak < FormatKodeAkun::jumlahTingkat();
+        $this->tipe = $this->tipeBebas ? 'H' : 'D';
+        $this->form['akun_id'] = FormatKodeAkun::saranKode($induk->akun_id, $tingkatAnak);
         $this->form['saldo_normal'] = (string) $induk->saldo_normal;
+        // Bawaan sifat ikut saudara (dipakai bila akunnya Detail)
         $saudaraKas = DB::table('sikeumst_akuns')->where('induk_id', $induk->akun_id)->where('kas_status', '1')->exists();
-        $this->form['kas_status'] = $this->tipe === 'D' && $saudaraKas ? '1' : '0';
-        $this->form['kategori_arus_kas'] = $this->tipe === 'D' && !$saudaraKas
-            ? (string) (DB::table('sikeumst_akuns')->where('induk_id', $induk->akun_id)->whereNotNull('kategori_arus_kas')
-                ->orderBy('akun_id')->value('kategori_arus_kas') ?? 'O')
-            : '';
+        $this->form['kas_status'] = $saudaraKas ? '1' : '0';
+        $this->form['kategori_arus_kas'] = $saudaraKas ? '' : (string) (DB::table('sikeumst_akuns')
+            ->where('induk_id', $induk->akun_id)->whereNotNull('kategori_arus_kas')->orderBy('akun_id')->value('kategori_arus_kas') ?? 'O');
+    }
+
+    public function updatedTipe(): void
+    {
+        if (!$this->tipeBebas || !in_array($this->tipe, ['H', 'D'], true)) {
+            $this->tipe = 'D';
+        }
     }
 
     // ─── Validasi ─────────────────────────────────────────────────────────────
@@ -139,16 +152,20 @@ new class extends Component {
             $rules['form.induk_id'] = ['required', function (string $atribut, $nilai, $gagal) {
                 $induk = DB::table('sikeumst_akuns')->where('akun_id', $nilai)->where('aktif', '1')->first();
                 if (!$induk || BaganAkun::tingkatAnak($induk) === null) {
-                    $gagal('Induk harus header aktif tingkat 2 (subkelompok) atau 3 (golongan).');
+                    $gagal('Induk harus akun Header aktif yang belum di tingkat terakhir.');
                 }
             }];
             $rules['form.akun_id'] = ['required', 'unique:sikeumst_akuns,akun_id', function (string $atribut, $nilai, $gagal) {
                 $induk = DB::table('sikeumst_akuns')->where('akun_id', $this->form['induk_id'])->first();
                 $tingkatAnak = $induk ? BaganAkun::tingkatAnak($induk) : null;
-                if ($tingkatAnak !== null && !preg_match(BaganAkun::polaKodeAnak($induk->akun_id, $tingkatAnak), (string) $nilai)) {
-                    $gagal('Kode harus ' . $induk->akun_id . '.' . str_repeat('9', BaganAkun::DIGIT_PER_TINGKAT[$tingkatAnak]) . ' (' . BaganAkun::DIGIT_PER_TINGKAT[$tingkatAnak] . ' digit di belakang kode induk).');
+                if ($tingkatAnak !== null && !FormatKodeAkun::kodeSah((string) $nilai, $tingkatAnak, $induk->akun_id)) {
+                    $gagal(FormatKodeAkun::petunjuk($tingkatAnak, $induk->akun_id));
+                }
+                if (strlen((string) $nilai) > FormatKodeAkun::PANJANG_KODE_MAKS) {
+                    $gagal('Kode maksimal ' . FormatKodeAkun::PANJANG_KODE_MAKS . ' karakter.');
                 }
             }];
+            $rules['tipe'] = 'required|in:H,D';
         }
 
         return $rules;
@@ -175,6 +192,7 @@ new class extends Component {
             'form.kategori_arus_kas' => 'Kategori Arus Kas',
             'form.kontrol_hp' => 'Kontrol Hutang/Piutang',
             'form.pusat_biaya_wajib' => 'Wajib Pusat Biaya',
+            'tipe' => 'Tipe Akun',
             'form.keterangan' => 'Keterangan',
         ];
     }
@@ -186,6 +204,9 @@ new class extends Component {
         $this->form['nama'] = trim($this->form['nama']);
         $this->form['akun_id'] = trim($this->form['akun_id']);
         $this->form['keterangan'] = trim($this->form['keterangan']);
+        if ($this->formMode === 'create' && !$this->tipeBebas) {
+            $this->tipe = 'D';
+        }
         if ($this->form['kas_status'] === '1') {
             $this->form['kategori_arus_kas'] = ''; // akun kas tidak punya kategori arus kas — ia sendiri sumber arusnya
         }
@@ -231,6 +252,10 @@ new class extends Component {
             }
             DB::transaction(function () use ($akunId, $lama, $isian) {
                 DB::table('sikeumst_akuns')->where('akun_id', $akunId)->update($isian + ['updated_at' => now()]);
+                if ((int) $lama['tingkat'] === 1) {
+                    // Akun tingkat 1 = kelompok: namanya satu, disimpan di dua tabel
+                    DB::table('sikeumst_akun_kelompoks')->where('kelompok_id', $akunId)->update(['nama' => mb_strtoupper($isian['nama'])]);
+                }
                 BaganAkun::catatAudit('UBAH', 'SIKEUMST_AKUNS', $akunId, array_intersect_key($lama, $isian), $isian);
             });
             $this->dispatch('toast', type: 'success', message: "Akun {$akunId} diperbarui.");
@@ -246,8 +271,8 @@ new class extends Component {
     {
         $this->wajibBolehKelola();
         $akun = DB::table('sikeumst_akuns')->where('akun_id', $akunId)->first();
-        if (!$akun || (int) $akun->tingkat < 3) {
-            $this->dispatch('toast', type: 'error', message: 'Kelompok & subkelompok standar tidak bisa dinonaktifkan.');
+        if (!$akun || (int) $akun->tingkat < 2) {
+            $this->dispatch('toast', type: 'error', message: 'Kelompok diatur di Master › Kelompok Akun.');
             return;
         }
 
@@ -282,8 +307,8 @@ new class extends Component {
     {
         $this->wajibBolehKelola();
         $akun = DB::table('sikeumst_akuns')->where('akun_id', $akunId)->first();
-        if (!$akun || (int) $akun->tingkat < 3) {
-            $this->dispatch('toast', type: 'error', message: 'Kelompok & subkelompok standar tidak bisa dihapus.');
+        if (!$akun || (int) $akun->tingkat < 2) {
+            $this->dispatch('toast', type: 'error', message: 'Kelompok dihapus lewat Master › Kelompok Akun.');
             return;
         }
         if (DB::table('sikeumst_akuns')->where('induk_id', $akunId)->exists()) {
@@ -332,6 +357,7 @@ new class extends Component {
         $this->tingkat = 4;
         $this->tipe = 'D';
         $this->sudahDipakai = false;
+        $this->tipeBebas = false;
         $this->resetValidation();
     }
 };
@@ -347,7 +373,8 @@ new class extends Component {
 
             <x-modul-dokumen.header :judul="$formMode === 'edit' ? 'Ubah Akun ' . $form['akun_id'] : 'Tambah Akun'"
                 ikon="M4 6h16M4 10h16M4 14h10M4 18h6" tutupAlpine="tryClose()">
-                {{ $tipe === 'D' ? 'Akun Detail — boleh dijurnal.' : 'Akun Header (golongan) — wadah akun detail, tidak dijurnal.' }}
+                {{ $tipe === 'D' ? 'Akun Detail — boleh dijurnal.' : 'Akun Header — wadah akun di bawahnya, tidak dijurnal.' }}
+                Format kode: {{ FormatKodeAkun::contoh() }} ({{ FormatKodeAkun::jumlahTingkat() }} tingkat).
                 <x-slot:badge><x-badge class="shrink-0 whitespace-nowrap" :variant="$formMode === 'edit' ? 'warning' : 'success'">{{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}</x-badge></x-slot:badge>
             </x-modul-dokumen.header>
 
@@ -362,7 +389,7 @@ new class extends Component {
                                 <x-select-input wire:model.live="form.induk_id" :error="$errors->has('form.induk_id')" class="w-full mt-1">
                                     <option value="">- pilih induk -</option>
                                     @foreach (BaganAkun::indukList() as $induk)
-                                        <option value="{{ $induk->akun_id }}">{{ (int) $induk->tingkat === 3 ? '   ' : '' }}{{ $induk->akun_id }} {{ $induk->nama }}{{ (int) $induk->tingkat === 2 ? ' (golongan baru)' : '' }}</option>
+                                        <option value="{{ $induk->akun_id }}">{{ str_repeat(' ', ((int) $induk->tingkat - 1) * 3) }}{{ $induk->akun_id }} {{ $induk->nama }}</option>
                                     @endforeach
                                 </x-select-input>
                                 <x-input-error :messages="$errors->get('form.induk_id')" class="mt-1" />
@@ -376,9 +403,27 @@ new class extends Component {
                                 :error="$errors->has('form.akun_id')" class="w-full mt-1 font-mono" />
                             <x-input-error :messages="$errors->get('form.akun_id')" class="mt-1" />
                             @if ($formMode === 'create' && $form['induk_id'] !== '')
-                                <p class="mt-1 text-[11px] text-muted dark:text-gray-400">Saran otomatis. Rincian 9xx untuk akun kontra.</p>
+                                <p class="mt-1 text-[11px] text-muted dark:text-gray-400">
+                                    Tingkat {{ $tingkat }}, saran otomatis.
+                                    @if (!$tipeBebas && FormatKodeAkun::awalKontra() > 0)
+                                        Nomor {{ FormatKodeAkun::awalKontra() }} ke atas untuk akun kontra.
+                                    @endif
+                                </p>
                             @endif
                         </div>
+                        @if ($formMode === 'create' && $form['induk_id'] !== '')
+                            <div class="sm:col-span-3">
+                                <x-input-label value="Tipe Akun *" />
+                                <x-select-input wire:model.live="tipe" :disabled="!$tipeBebas" :error="$errors->has('tipe')" class="w-full mt-1">
+                                    <option value="H">Header — wadah akun di bawahnya</option>
+                                    <option value="D">Detail — boleh dijurnal</option>
+                                </x-select-input>
+                                <x-input-error :messages="$errors->get('tipe')" class="mt-1" />
+                                @if (!$tipeBebas)
+                                    <p class="mt-1 text-[11px] text-muted dark:text-gray-400">Tingkat terakhir selalu Detail.</p>
+                                @endif
+                            </div>
+                        @endif
                         <div class="sm:col-span-3">
                             <x-input-label value="Nama Akun *" />
                             <x-text-input wire:model="form.nama" maxlength="150" :error="$errors->has('form.nama')" class="w-full mt-1"

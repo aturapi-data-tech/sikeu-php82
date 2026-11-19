@@ -20,6 +20,8 @@ Route::middleware(['auth', 'menu'])->group(function () {
         ->name('master.bagan-akun');
     Route::livewire('/master/peta-akun', 'pages::master.peta-akun.peta-akun')
         ->name('master.peta-akun');
+    Route::livewire('/master/format-kode', 'pages::master.format-kode.format-kode')
+        ->name('master.format-kode');
 
     // ── CUTOFF JURNAL ──
     Route::livewire('/cutoff/snapshot-jurnal', 'pages::cutoff.snapshot-jurnal.snapshot-jurnal')

@@ -51,8 +51,10 @@ Tabel milik SIKEU berawalan `SIKEUMST_` (master) dan `SIKEUTXN_` (transaksi).
 
 ## Role
 
-Menu tampil sesuai role (definisi tunggal di `app/Services/AppMenu.php`); aksi dibatasi lewat
-`app/Support/AksiRole.php`.
+Hak akses = **permission** yang dicentang per role di *Sistem › Role Control* (katalog & keterangan di
+`app/Support/HakAkses.php`). Menu (`app/Services/AppMenu.php`, kolom `izin`) dan aksi (`@can` / `->can()`) membaca
+permission, bukan nama role — instansi lain bebas memakai nama jabatannya sendiri. Role `Admin` selalu boleh semua.
+Tabel di bawah = pembagian awal dari migrasi `2026_11_19_130000_hak_akses_awal_sikeu`.
 
 | Role | Akses |
 |---|---|
@@ -82,6 +84,7 @@ Database (sekali):
 5. `database/sql/03_peta_akun_sirus.sql` — peta seluruh akun SIRUS (219) ke bagan SIKEU.
    Keduanya dibuat oleh `database/sql/tools/bagan_akun.php`: ubah bagan/peta di sana, jalankan ulang generatornya.
 
+6. `database/sql/04_pengaturan.sql` — tabel pengaturan (format kode akun: tingkat, digit, pemisah, nomor kontra).
 Di **SIRUS**: isi `SIKEU_API_JWT_SECRET` (≥ 32 karakter acak) di `.env`, lalu `php artisan sikeu-api:akun`
 → salin username & password yang dicetak ke `.env` SIKEU.
 
