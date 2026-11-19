@@ -292,6 +292,10 @@ class BukuBesar
             if (!$periodeRow->snap_id_sah) {
                 throw new RuntimeException('Periode belum diposting — sahkan versi snapshot dulu.');
             }
+            $draftUmum = DB::table('sikeutxn_jurnal_hdrs')->where('periode', $periode)->where('status', 'D')->where('sumber', '<>', 'SALDO_AWAL')->count();
+            if ($draftUmum > 0) {
+                throw new RuntimeException("Masih ada {$draftUmum} draft jurnal di periode ini — posting atau hapus dulu sebelum mengunci.");
+            }
             $sebelumnyaBuka = DB::table('sikeumst_periodes')->where('periode', '<', $periode)->where('status', self::STATUS_BUKA)
                 ->orderBy('periode')->value('periode');
             if ($sebelumnyaBuka) {
@@ -427,7 +431,7 @@ class BukuBesar
         )->nilai ?? 0);
 
         $rows = DB::select(
-            "SELECT h.jurnal_id, h.no_jurnal, h.tanggal, h.sumber, h.referensi_id, d.akun_lawan_id, l.nama AS nama_lawan, d.cabang_kunci,
+            "SELECT h.jurnal_id, h.no_jurnal, h.tanggal, h.sumber, h.referensi_id, h.keterangan AS keterangan_jurnal, d.akun_lawan_id, l.nama AS nama_lawan, d.cabang_kunci,
                     MAX(c.label_cabang) AS label_cabang, MAX(d.keterangan) AS keterangan, SUM(d.debit) AS debit, SUM(d.kredit) AS kredit
                FROM sikeutxn_jurnal_dtls d
                JOIN sikeutxn_jurnal_hdrs h ON h.jurnal_id = d.jurnal_id
@@ -435,7 +439,7 @@ class BukuBesar
                LEFT JOIN sikeutxn_snap_cabangs c ON h.sumber = 'SIRUS' AND c.snap_id = TO_NUMBER(h.referensi_id) AND c.cabang_kunci = d.cabang_kunci
               WHERE h.status = 'P' AND d.akun_id = ? AND h.periode >= ? AND h.periode <= ?
                 AND NOT (h.sumber = 'SALDO_AWAL' AND h.periode = ?)
-              GROUP BY h.jurnal_id, h.no_jurnal, h.tanggal, h.sumber, h.referensi_id, d.akun_lawan_id, l.nama, d.cabang_kunci
+              GROUP BY h.jurnal_id, h.no_jurnal, h.tanggal, h.sumber, h.referensi_id, h.keterangan, d.akun_lawan_id, l.nama, d.cabang_kunci
               ORDER BY h.tanggal, h.jurnal_id, d.cabang_kunci, d.akun_lawan_id",
             [$akunId, $periodeDari, $periodeSampai, $periodeDari]
         );

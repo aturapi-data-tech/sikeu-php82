@@ -124,7 +124,7 @@ new class extends Component {
     /** Keterangan baris: isian posting ("OBAT RJ (12 trx)"), atau label cabang yang bisa dibaca, atau sumber jurnal. */
     public function keteranganBaris(array $baris): string
     {
-        return (string) ($baris['keterangan'] ?: BukuBesar::labelCabangBaca($baris['label_cabang'] ?? null) ?: $baris['sumber']);
+        return (string) ($baris['keterangan'] ?: BukuBesar::labelCabangBaca($baris['label_cabang'] ?? null) ?: ($baris['keterangan_jurnal'] ?? '') ?: $baris['sumber']);
     }
 
     /** Saldo bertanda → teks "1.234,00 D" / "1.234,00 K". */

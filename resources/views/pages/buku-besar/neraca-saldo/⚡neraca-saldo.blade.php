@@ -154,7 +154,7 @@ new class extends Component {
                             </tr>
                             <tr>
                                 @foreach (['Debit', 'Kredit', 'Debit', 'Kredit', 'Debit', 'Kredit'] as $judulKolom)
-                                    <th class="text-right">{{ $judulKolom }}</th>
+                                    <th class="text-right w-36">{{ $judulKolom }}</th>
                                 @endforeach
                             </tr>
                         </thead>
@@ -170,10 +170,13 @@ new class extends Component {
                                 @foreach ($grup['akun'] as $akun)
                                     <tr wire:key="akun-{{ $akun['akun_id'] }}">
                                         <td class="ds-td-token">
-                                            <a href="{{ route('buku-besar.buku-besar', ['akun' => $akun['akun_id'], 'dari' => $periode, 'sampai' => $periode]) }}" wire:navigate
-                                                class="text-brand-green hover:underline dark:text-brand-lime">{{ $akun['akun_id'] }}</a>
+                                            <button type="button" wire:click="$dispatch('buku-besar.buka-mutasi', { akunId: '{{ $akun['akun_id'] }}', dari: '{{ $periode }}', sampai: '{{ $periode }}' })"
+                                                class="text-brand-green hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green rounded dark:text-brand-lime">{{ $akun['akun_id'] }}</button>
                                         </td>
-                                        <td class="text-body dark:text-gray-300">{{ $akun['nama'] }}</td>
+                                        <td>
+                                            <button type="button" wire:click="$dispatch('buku-besar.buka-mutasi', { akunId: '{{ $akun['akun_id'] }}', dari: '{{ $periode }}', sampai: '{{ $periode }}' })"
+                                                class="text-left text-body hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green rounded dark:text-gray-300">{{ $akun['nama'] }}</button>
+                                        </td>
                                         <td class="text-right tabular-nums">{{ $akun['awal'] > 0 ? Format::uang($akun['awal']) : '' }}</td>
                                         <td class="text-right tabular-nums">{{ $akun['awal'] < 0 ? Format::uang(-$akun['awal']) : '' }}</td>
                                         <td class="text-right tabular-nums">{{ $akun['mutasi_debit'] != 0 ? Format::uang($akun['mutasi_debit']) : '' }}</td>
@@ -231,9 +234,12 @@ new class extends Component {
                 </div>
             </div>
             <p class="mt-2 text-xs text-muted dark:text-gray-400">
+                Klik kode / nama akun untuk melihat mutasinya tanpa meninggalkan halaman ini.
                 Angka merah = saldo berlawanan dengan saldo normal akunnya (mis. kas bersaldo kredit) — periksa sebelum mengunci periode.
-                Saldo awal tahun dari SIRUS belum diimpor (Tahap 2), jadi saldo akun Neraca saat ini = akumulasi mutasi yang sudah diposting.
+                Saldo awal Januari berasal dari Buku Besar › Saldo Awal; tanpa saldo awal sah, saldo akun Neraca = akumulasi mutasi yang sudah diposting.
             </p>
         </div>
     </div>
+    <livewire:pages::buku-besar.mutasi-akun.mutasi-akun-modal wire:key="mutasi-akun-modal" />
 </div>
+

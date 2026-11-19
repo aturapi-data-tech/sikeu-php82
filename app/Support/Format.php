@@ -66,4 +66,20 @@ class Format
     {
         return number_format((float) $nilai, $desimal, ',', '.');
     }
+
+    /** Kebalikan uang(): "1.234.567,89" / "1234567.89" / "1234567" → float ≥ 0; teks kosong → 0; selain angka → null. */
+    public static function uraiUang(?string $teks): ?float
+    {
+        $teks = str_replace([' ', 'Rp', 'rp'], '', trim((string) $teks));
+        if ($teks === '') {
+            return 0.0;
+        }
+        if (str_contains($teks, ',')) {
+            $teks = str_replace(',', '.', str_replace('.', '', $teks));
+        } elseif (substr_count($teks, '.') > 1 || preg_match('/\.\d{3}$/', $teks)) {
+            $teks = str_replace('.', '', $teks);
+        }
+
+        return is_numeric($teks) && (float) $teks >= 0 ? round((float) $teks, 2) : null;
+    }
 }

@@ -162,7 +162,7 @@ Kode: `SnapshotJurnal`, `BukuBesar`, `BaganAkun`, `FormatKodeAkun`. Detail tekni
 | 1 | ~~Laporan Laba Rugi~~ SELESAI; sisa: **form Susunan Laporan** (ubah baris template tanpa SQL) | universal |
 | 2 | ~~Saldo awal~~ SELESAI (`App\Support\SaldoAwal`, layar Buku Besar › Saldo Awal, API SIRUS `/saldo-awal/{tahun}`) | syarat Neraca |
 | 3 | ~~Neraca~~ SELESAI; sisa **Laporan Perubahan Ekuitas** (PT; jenis baru di `sikeumst_lap_hdrs`) | set laporan SAK EP |
-| 4 | **Jurnal Umum / Penyesuaian** (MANUAL, D/K bebas, wajib seimbang, periode Buka, `jurnal.entri`) | tempat semua koreksi §5.6 |
+| 4 | ~~Jurnal Umum / Penyesuaian~~ SELESAI (`App\Support\JurnalUmum`, layar Buku Besar › Jurnal Umum; draft `jurnal.entri`, posting/batal `jurnal.posting`; kunci periode ditolak bila ada draft) | tempat semua koreksi §5.6 |
 | 5 | **Arus Kas** metode langsung (kas × lawan × kategori) + tidak langsung | set laporan |
 | 6 | API SIRUS **klaim BPJS** + **RI berjalan** → penyesuaian otomatis §4.1–4.2 | celah terbesar di angka pendapatan & piutang |
 | 7 | Jurnal **jasa medis dari SIAP** §4.3 | beban pokok yang hilang |

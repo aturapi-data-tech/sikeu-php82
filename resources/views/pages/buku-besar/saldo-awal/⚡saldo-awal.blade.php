@@ -173,24 +173,12 @@ new class extends Component {
         $this->dispatch('open-modal', name: 'baris-saldo-awal');
     }
 
-    /** "1.234.567,89" / "1234567.89" / "1234567" → float; selain itu null. */
-    private function uraiNominal(string $teks): ?float
-    {
-        $teks = str_replace(' ', '', trim($teks));
-        if (str_contains($teks, ',')) {
-            $teks = str_replace(',', '.', str_replace('.', '', $teks));
-        } elseif (substr_count($teks, '.') > 1) {
-            $teks = str_replace('.', '', $teks);
-        }
-
-        return is_numeric($teks) && (float) $teks >= 0 ? round((float) $teks, 2) : null;
-    }
 
     public function simpanBaris(): void
     {
         $this->wajibPosting();
         $this->resetValidation();
-        $nominal = $this->uraiNominal($this->barisNominal);
+        $nominal = trim($this->barisNominal) === '' ? null : Format::uraiUang($this->barisNominal);
         if ($this->barisAkunId === '') {
             $this->addError('barisAkunId', 'Pilih akun.');
         }

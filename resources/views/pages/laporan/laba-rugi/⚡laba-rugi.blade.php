@@ -164,8 +164,8 @@ new class extends Component {
                                         <div x-show="buka" x-cloak class="mt-2 space-y-1">
                                             @foreach ($baris['rincian'] as $akunId => $rincian)
                                                 <div class="flex justify-between gap-4 text-xs">
-                                                    <a href="{{ route('buku-besar.buku-besar', ['akun' => $akunId, 'dari' => $periode, 'sampai' => $periode]) }}" wire:navigate
-                                                        class="text-brand-green hover:underline dark:text-brand-lime"><span class="font-mono">{{ $akunId }}</span> {{ $rincian['nama'] }}</a>
+                                                    <button type="button" wire:click="$dispatch('buku-besar.buka-mutasi', { akunId: '{{ $akunId }}', dari: '{{ $periode }}', sampai: '{{ $periode }}' })"
+                                                        class="text-left text-brand-green hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green rounded dark:text-brand-lime"><span class="font-mono">{{ $akunId }}</span> {{ $rincian['nama'] }}</button>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -192,10 +192,12 @@ new class extends Component {
                     </tbody>
                 </table>
                 <p class="px-6 py-3 text-xs text-muted dark:text-gray-400">
-                    Angka dalam kurung = negatif. Klik nama pos untuk melihat akun penyusunnya; klik akun untuk Buku Besar.
+                    Angka dalam kurung = negatif. Klik nama pos untuk melihat akun penyusunnya; klik akun untuk melihat mutasinya.
                     Pendapatan rawat inap SIRUS diakui saat pasien pulang dan selisih tarif BPJS belum dijurnal — lihat panduan keuangan (skill keuangan-rs §4).
                 </p>
             </div>
         </div>
     </div>
+    <livewire:pages::buku-besar.mutasi-akun.mutasi-akun-modal wire:key="mutasi-akun-modal" />
 </div>
+

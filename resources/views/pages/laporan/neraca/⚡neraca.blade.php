@@ -183,8 +183,8 @@ new class extends Component {
                                         <div x-show="buka" x-cloak class="mt-2 space-y-1">
                                             @foreach ($baris['rincian'] as $akunId => $rincian)
                                                 <div class="text-xs">
-                                                    <a href="{{ route('buku-besar.buku-besar', ['akun' => $akunId, 'dari' => substr($periode, 0, 4) . '01', 'sampai' => $periode]) }}" wire:navigate
-                                                        class="text-brand-green hover:underline dark:text-brand-lime"><span class="font-mono">{{ $akunId }}</span> {{ $rincian['nama'] }}</a>
+                                                    <button type="button" wire:click="$dispatch('buku-besar.buka-mutasi', { akunId: '{{ $akunId }}', dari: '{{ substr($periode, 0, 4) }}01', sampai: '{{ $periode }}' })"
+                                                        class="text-left text-brand-green hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green rounded dark:text-brand-lime"><span class="font-mono">{{ $akunId }}</span> {{ $rincian['nama'] }}</button>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -217,4 +217,6 @@ new class extends Component {
             </div>
         </div>
     </div>
+    <livewire:pages::buku-besar.mutasi-akun.mutasi-akun-modal wire:key="mutasi-akun-modal" />
 </div>
+

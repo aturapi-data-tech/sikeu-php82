@@ -28,6 +28,8 @@ Route::middleware(['auth', 'menu'])->group(function () {
         ->name('buku-besar.periode');
     Route::livewire('/buku-besar/saldo-awal', 'pages::buku-besar.saldo-awal.saldo-awal')
         ->name('buku-besar.saldo-awal');
+    Route::livewire('/buku-besar/jurnal-umum', 'pages::buku-besar.jurnal-umum.jurnal-umum')
+        ->name('buku-besar.jurnal-umum');
     Route::livewire('/buku-besar/neraca-saldo', 'pages::buku-besar.neraca-saldo.neraca-saldo')
         ->name('buku-besar.neraca-saldo');
     Route::livewire('/buku-besar/buku-besar', 'pages::buku-besar.buku-besar.buku-besar')
