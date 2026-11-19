@@ -19,8 +19,13 @@
                 <tr wire:key="sa-{{ $total->jurnal_id }}-{{ $baris['akun_id'] }}">
                     <td class="ds-td-token">{{ $baris['akun_id'] }}</td>
                     <td class="text-body dark:text-gray-300">{{ $baris['nama'] }}</td>
-                    <td class="text-right tabular-nums {{ $berlawanan ? 'text-fg-danger-strong font-medium' : '' }}">{{ (float) $baris['debit'] != 0 ? \App\Support\Format::uang($baris['debit']) : '' }}</td>
-                    <td class="text-right tabular-nums {{ $berlawanan ? 'text-fg-danger-strong font-medium' : '' }}">{{ (float) $baris['kredit'] != 0 ? \App\Support\Format::uang($baris['kredit']) : '' }}</td>
+                    @foreach ([(float) $baris['debit'], (float) $baris['kredit']] as $nilaiSisi)
+                        <td class="text-right tabular-nums whitespace-nowrap {{ $berlawanan && $nilaiSisi != 0 ? 'bg-danger-soft text-fg-danger-strong font-semibold' : '' }}">
+                            @if ($nilaiSisi != 0)
+                                @if ($berlawanan) <x-ikon-peringatan label="Saldo berlawanan dengan saldo normal" /> @endif{{ \App\Support\Format::uang($nilaiSisi) }}
+                            @endif
+                        </td>
+                    @endforeach
                     <td class="text-xs text-muted dark:text-gray-400">{{ $baris['keterangan'] }}</td>
                     @if ($bolehUbah)
                         <td class="ds-c">
@@ -45,5 +50,5 @@
             </tr>
         </tfoot>
     </table>
-    <p class="px-4 py-2 text-[11px] text-muted dark:text-gray-400">Angka merah = saldo berlawanan dengan saldo normal akunnya (mis. persediaan bersaldo kredit) — periksa sumbernya di SIRUS.</p>
+    <p class="px-4 py-2 text-[11px] text-muted dark:text-gray-400">Sel merah bertanda segitiga peringatan = saldo berlawanan dengan saldo normal akunnya (mis. persediaan bersaldo kredit) — periksa sumbernya di SIRUS.</p>
 </div>

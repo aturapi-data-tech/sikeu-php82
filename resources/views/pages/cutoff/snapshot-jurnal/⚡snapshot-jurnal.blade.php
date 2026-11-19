@@ -173,9 +173,7 @@ new class extends Component {
                     <p class="text-sm font-semibold text-blue-900 dark:text-blue-100">
                         Mengambil versi {{ $versiProses->versi ?? '…' }} — {{ $selesai }} dari {{ $jumlah }} cabang jurnal ({{ $persen }}%)
                     </p>
-                    <div class="w-full h-2 mt-2 overflow-hidden bg-white rounded-full dark:bg-gray-800">
-                        <div class="h-2 transition-all bg-blue-600 rounded-full" style="width: {{ $persen }}%"></div>
-                    </div>
+                    <div class="mt-2"><progress value="{{ $persen }}" max="100" aria-label="Kemajuan pengambilan snapshot" class="block w-full h-2 overflow-hidden rounded-full appearance-none [&::-webkit-progress-bar]:bg-white [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-value]:bg-blue-600 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:transition-all motion-reduce:[&::-webkit-progress-value]:transition-none [&::-moz-progress-bar]:bg-blue-600 [&::-moz-progress-bar]:rounded-full bg-white dark:bg-gray-800 dark:[&::-webkit-progress-bar]:bg-gray-800">{{ $persen }}%</progress></div>
                     <p class="mt-2 text-xs text-blue-800 dark:text-blue-200">Biarkan halaman terbuka. Bila tertutup, buka lagi halaman ini untuk melanjutkan.</p>
                 </div>
             @endif

@@ -222,7 +222,7 @@ new class extends Component {
                         <tbody>
                             @forelse ($this->rows as $row)
                                 @php
-                                    $indent = 'padding-left: ' . ((int) $row->tingkat - 1) . 'rem';
+                                    $indent = ['pl-0', 'pl-4', 'pl-8', 'pl-12', 'pl-16', 'pl-20'][min(max((int) $row->tingkat - 1, 0), 5)];
                                     $gayaNama = match (true) {
                                         (int) $row->tingkat === 1 => 'font-bold uppercase text-ink dark:text-gray-100',
                                         $row->tipe === 'H' => 'font-semibold uppercase text-ink dark:text-gray-100',
@@ -233,14 +233,14 @@ new class extends Component {
                                     class="{{ $row->aktif === '1' ? '' : 'opacity-60' }} {{ (int) $row->tingkat === 1 ? 'bg-surface-card dark:bg-gray-800' : '' }}">
                                     <td class="ds-td-token">{{ $row->akun_id }}</td>
                                     <td>
-                                        <div style="{{ $indent }}" class="{{ $gayaNama }}">
+                                        <div class="{{ $indent }} {{ $gayaNama }}">
                                             {{ $row->nama }}
                                             @if ((int) $row->tingkat === 1)
                                                 <x-badge class="ml-2 normal-case" :variant="$row->jenis_laporan === 'N' ? 'info' : 'purple'">{{ $row->jenis_laporan === 'N' ? 'Neraca' : 'Laba Rugi' }}</x-badge>
                                             @endif
                                         </div>
                                         @if ($row->keterangan)
-                                            <div style="{{ $indent }}" class="text-xs text-muted dark:text-gray-400">{{ $row->keterangan }}</div>
+                                            <div class="{{ $indent }} text-xs text-muted dark:text-gray-400">{{ $row->keterangan }}</div>
                                         @endif
                                     </td>
                                     <td class="ds-c">

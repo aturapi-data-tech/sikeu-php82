@@ -193,8 +193,9 @@ new class extends Component {
                                     @endif
                                 </td>
                                 @foreach ($this->laporan['kolom'] as $kunciKolom => $kolom)
-                                    <td class="text-right align-top tabular-nums whitespace-nowrap {{ $baris['tebal'] === '1' ? 'font-bold text-ink dark:text-gray-100' : '' }} {{ $baris['tipe'] === 'A' && ($baris['nilai'][$kunciKolom] ?? 0) < 0 ? 'text-fg-danger-strong' : '' }}">
-                                        {{ $this->teksNilai($baris['nilai'][$kunciKolom] ?? null) }}
+                                    @php $minus = $baris['tipe'] === 'A' && ($baris['nilai'][$kunciKolom] ?? 0) < 0; @endphp
+                                    <td class="text-right align-top tabular-nums whitespace-nowrap {{ $baris['tebal'] === '1' ? 'font-bold text-ink dark:text-gray-100' : '' }} {{ $minus ? 'bg-danger-soft text-fg-danger-strong font-semibold' : '' }}">
+                                        @if ($minus) <x-ikon-peringatan label="Saldo berlawanan dengan saldo normal" /> @endif{{ $this->teksNilai($baris['nilai'][$kunciKolom] ?? null) }}
                                         @if ($baris['tipe'] === 'A' && $baris['rincian'] !== [])
                                             <div x-show="buka" x-cloak class="mt-2 space-y-1 font-normal">
                                                 @foreach ($baris['rincian'] as $rincian)
@@ -211,7 +212,7 @@ new class extends Component {
                     </tbody>
                 </table>
                 <p class="px-6 py-3 text-xs text-muted dark:text-gray-400">
-                    Angka dalam kurung = negatif; pos aset bernilai negatif ditandai merah (mis. persediaan bersaldo kredit) — telusuri lewat rincian akun.
+                    Angka dalam kurung = negatif; pos bernilai negatif ditandai merah dengan segitiga peringatan (mis. persediaan bersaldo kredit) — telusuri lewat rincian akun.
                     "Akun sementara" harus nol sebelum laporan dianggap final.
                 </p>
             </div>

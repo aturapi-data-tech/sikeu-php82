@@ -22,6 +22,31 @@ new class extends Component {
 
     public string $searchKeyword = '';
 
+    /** Hanya akun yang saldo akhirnya berlawanan dengan saldo normalnya. */
+    public bool $hanyaBerlawanan = false;
+
+    public static function berlawanan(array $akun): bool
+    {
+        return ($akun['akhir'] < 0 && $akun['saldo_normal'] === 'D') || ($akun['akhir'] > 0 && $akun['saldo_normal'] === 'K');
+    }
+
+    /** Akun setelah filter laporan & pencarian (sebelum saring "berlawanan") — dasar badge & tabel. */
+    #[Computed]
+    public function akunTersaring()
+    {
+        $keyword = mb_strtoupper(trim($this->searchKeyword));
+
+        return collect($this->hasil['akun'])
+            ->filter(fn (array $akun) => $this->filterLaporan === '' || $akun['jenis_laporan'] === $this->filterLaporan)
+            ->filter(fn (array $akun) => $keyword === '' || str_starts_with($akun['akun_id'], $keyword) || str_contains(mb_strtoupper($akun['nama']), $keyword));
+    }
+
+    #[Computed]
+    public function jumlahBerlawanan(): int
+    {
+        return $this->akunTersaring->filter(fn (array $akun) => self::berlawanan($akun))->count();
+    }
+
     public function mount(): void
     {
         if (!SnapshotJurnal::periodeValid($this->periode)) {
@@ -32,7 +57,7 @@ new class extends Component {
 
     public function resetFilters(): void
     {
-        $this->reset(['filterLaporan', 'searchKeyword']);
+        $this->reset(['filterLaporan', 'searchKeyword', 'hanyaBerlawanan']);
     }
 
     #[Computed]
@@ -57,10 +82,7 @@ new class extends Component {
     #[Computed]
     public function kelompokRows(): array
     {
-        $keyword = mb_strtoupper(trim($this->searchKeyword));
-        $akunList = collect($this->hasil['akun'])
-            ->filter(fn (array $akun) => $this->filterLaporan === '' || $akun['jenis_laporan'] === $this->filterLaporan)
-            ->filter(fn (array $akun) => $keyword === '' || str_starts_with($akun['akun_id'], $keyword) || str_contains(mb_strtoupper($akun['nama']), $keyword));
+        $akunList = $this->akunTersaring->filter(fn (array $akun) => !$this->hanyaBerlawanan || self::berlawanan($akun));
 
         $hasilList = [];
         foreach ($this->kelompokList as $kelompokId => $kelompok) {
@@ -132,6 +154,13 @@ new class extends Component {
                     <div class="flex items-center gap-2">
                         @if ($this->seimbang)
                             <x-badge variant="success">Seimbang (D = K)</x-badge>
+                        @endif
+                        @if ($this->jumlahBerlawanan > 0)
+                            <button type="button" wire:click="$toggle('hanyaBerlawanan')" aria-pressed="{{ $hanyaBerlawanan ? 'true' : 'false' }}"
+                                title="Saring akun yang saldonya berlawanan dengan saldo normal"
+                                class="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green {{ $hanyaBerlawanan ? 'bg-danger-strong text-white' : 'bg-danger-soft text-fg-danger-strong hover:ring-1 hover:ring-fg-danger-strong' }}">
+                                <x-ikon-peringatan /> {{ $this->jumlahBerlawanan }} saldo berlawanan{{ $hanyaBerlawanan ? ' (disaring)' : '' }}
+                            </button>
                         @else
                             <x-badge variant="danger">TIDAK seimbang</x-badge>
                         @endif
@@ -181,8 +210,14 @@ new class extends Component {
                                         <td class="text-right tabular-nums">{{ $akun['awal'] < 0 ? Format::uang(-$akun['awal']) : '' }}</td>
                                         <td class="text-right tabular-nums">{{ $akun['mutasi_debit'] != 0 ? Format::uang($akun['mutasi_debit']) : '' }}</td>
                                         <td class="text-right tabular-nums">{{ $akun['mutasi_kredit'] != 0 ? Format::uang($akun['mutasi_kredit']) : '' }}</td>
-                                        <td class="text-right tabular-nums font-medium {{ ($akun['akhir'] < 0 && $akun['saldo_normal'] === 'D') || ($akun['akhir'] > 0 && $akun['saldo_normal'] === 'K') ? 'text-fg-danger-strong' : 'text-ink dark:text-gray-100' }}">{{ $akun['akhir'] > 0 ? Format::uang($akun['akhir']) : '' }}</td>
-                                        <td class="text-right tabular-nums font-medium {{ ($akun['akhir'] < 0 && $akun['saldo_normal'] === 'D') || ($akun['akhir'] > 0 && $akun['saldo_normal'] === 'K') ? 'text-fg-danger-strong' : 'text-ink dark:text-gray-100' }}">{{ $akun['akhir'] < 0 ? Format::uang(-$akun['akhir']) : '' }}</td>
+                                        @php $berlawanan = $this::berlawanan($akun); @endphp
+                                        @foreach ([$akun['akhir'] > 0 ? $akun['akhir'] : null, $akun['akhir'] < 0 ? -$akun['akhir'] : null] as $nilaiAkhir)
+                                            <td class="text-right tabular-nums whitespace-nowrap {{ $berlawanan && $nilaiAkhir !== null ? 'bg-danger-soft text-fg-danger-strong font-semibold' : 'font-medium text-ink dark:text-gray-100' }}">
+                                                @if ($nilaiAkhir !== null)
+                                                    @if ($berlawanan) <x-ikon-peringatan label="Saldo berlawanan dengan saldo normal" /> @endif{{ Format::uang($nilaiAkhir) }}
+                                                @endif
+                                            </td>
+                                        @endforeach
                                     </tr>
                                 @endforeach
                                 <tr wire:key="subtotal-{{ $grup['kelompok']->kelompok_id }}" class="text-xs">
@@ -235,7 +270,7 @@ new class extends Component {
             </div>
             <p class="mt-2 text-xs text-muted dark:text-gray-400">
                 Klik kode / nama akun untuk melihat mutasinya tanpa meninggalkan halaman ini.
-                Angka merah = saldo berlawanan dengan saldo normal akunnya (mis. kas bersaldo kredit) — periksa sebelum mengunci periode.
+                Sel merah bertanda segitiga peringatan = saldo berlawanan dengan saldo normal akunnya (mis. piutang / persediaan bersaldo kredit) — periksa sebelum mengunci periode; klik badge "saldo berlawanan" untuk menyaringnya.
                 Saldo awal Januari berasal dari Buku Besar › Saldo Awal; tanpa saldo awal sah, saldo akun Neraca = akumulasi mutasi yang sudah diposting.
             </p>
         </div>
