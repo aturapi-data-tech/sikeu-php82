@@ -33,6 +33,7 @@ Total: **7 skill**.
 | **livewire-render-versioning** | Aturan `wire:key` berversi (`WithRenderVersioningTrait` / `renderKey`) saat ada komponen Livewire bersarang di dalamnya. | Sebelum menambah `renderKey`/`incrementVersion` pada pembungkus, atau saat muncul "Snapshot missing on Livewire component". |
 | **ui-pattern-docs** | Indeks pola UI di `docs/` (tombol, modal, tab, page-frame, cetak PDF/TTD, editor, list stabil, wrapper hub). | Sebelum membuat komponen UI baru — cek dulu polanya sudah ada. |
 | **sikeu-ui-ux** | Aturan UI/UX SIKEU untuk Livewire/Volt/Alpine: token warna "Netral Klinis", komponen wajib, loading per aksi + `wire:target`, konfirmasi aksi berisiko, modal (dirty guard, dialog anak, satu akar), timer Alpine `destroy()`, jalur gagal `$wire`, aksesibilitas, verifikasi (uji asap + screenshot headless). Disusun dari audit UI UX Pro Max (skill pihak ketiga itu tidak dipasang). | Membuat/merombak halaman, form, modal, warna; mengaudit UX. |
+| **keuangan-rs** | Panduan akuntansi & laporan keuangan RS di SIKEU: SAK EP / penyajian nirlaba, set laporan lengkap (Neraca, Laba Rugi, Perubahan Ekuitas, Arus Kas, CALK), aturan template laporan (tanpa hardcode, akun yatim = galat, cek seimbang), kebijakan khas RS (pendapatan RI saat dirawat, BPJS/INA-CBG, jasa medis SIAP, persediaan, aset komersial vs fiskal, pajak), checklist tutup bulan, celah SIKEU berurutan, rasio direksi. | Membuat/mengubah laporan keuangan, jurnal penyesuaian, saldo awal, tutup buku, bagan/peta akun; angka laporan janggal. |
 
 ---
 

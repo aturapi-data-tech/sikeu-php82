@@ -32,14 +32,15 @@ Oracle 10g (yajra/laravel-oci8), Tailwind + Alpine, Spatie Permission.
    **Jangan menulis nama role di kode** — hak akses = permission Spatie: tambah di `App\Support\HakAkses::DAFTAR`,
    buat lewat migrasi, pakai `@can` / `->can()` + guard server di method-nya; pembagian ke role diatur user di Role Control.
    Pengecualian tunggal: `HakAkses::PERAN_SUPER` ('Admin') selalu boleh semua.
+7. **Hal yang beda antar-instansi = pengaturan, bukan konstanta** (tabel `sikeumst_pengaturans`, DDL 04, kelas
+   `App\Support\Pengaturan`). Format kode akun dibaca lewat `App\Support\FormatKodeAkun` — jangan menulis
+   jumlah tingkat/digit/pemisah/nomor kontra di kode.
 8. **Buku besar** (`App\Support\BukuBesar`, layar Buku Besar › Periode & Posting / Neraca Saldo / Buku Besar):
    versi snapshot yang DISAHKAN per periode diposting jadi satu jurnal per hari (sumber SIRUS), baris = Σ per
    (tanggal, cabang, akun, lawan, sisi) lewat peta akun; posting ulang selama periode Buka → jurnal lama status B.
    Saldo = Σ jurnal status P (akun L hanya sejak Januari). Kunci berurutan dari bulan terlama; buka kunci hanya
    periode terkunci terakhir + alasan. Jangan UPDATE/DELETE jurnal P — batalkan (status B).
-7. **Hal yang beda antar-instansi = pengaturan, bukan konstanta** (tabel `sikeumst_pengaturans`, DDL 04, kelas
-   `App\Support\Pengaturan`). Format kode akun dibaca lewat `App\Support\FormatKodeAkun` — jangan menulis
-   jumlah tingkat/digit/pemisah/nomor kontra di kode.
+9. **Akuntansi & laporan keuangan**: baca skill `keuangan-rs` dulu (standar, kebijakan RS, celah data SIRUS, urutan kerja).
 
 ## Uji lokal
 
