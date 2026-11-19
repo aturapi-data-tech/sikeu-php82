@@ -19,6 +19,8 @@ Oracle 10g (yajra/laravel-oci8), Tailwind + Alpine, Spatie Permission.
    dengan bagian periksa / verifikasi / rollback. Konsep buku besar ada di kepala file 01.
    **Bagan akun & peta akun SIRUS** (02_, 03_) DIBANGKITKAN dari `database/sql/tools/bagan_akun.php` —
    jangan edit SQL-nya langsung. Generator menolak akun SIRUS yang belum dipetakan / peta ke akun header.
+   Itu hanya untuk PASANG AWAL: sesudahnya sumber data = tabel, diubah lewat layar Master › Bagan Akun &
+   Peta Akun SIRUS (gate `akun.kelola`, aturan di `App\Support\BaganAkun`, setiap perubahan ke sikeutxn_audit_logs).
 4. **Mesin jurnal tetap satu, di SIRUS** (`App\Support\Keuangan\Jurnal` + `JurnalCabang`, lihat
    `docs/jurnal-keuangan.md` di repo SIRUS). Jangan menyalin katalog cabangnya ke SIKEU. API mengirim per cabang
    (satu SELECT tanpa UNION — UNION besar memberi wrong result di Oracle 10.2.0.1).

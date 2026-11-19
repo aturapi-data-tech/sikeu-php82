@@ -49,6 +49,9 @@ class AksiRole
     /** Role yang boleh menjalankan tutup buku tahunan — aksi pengesahan. */
     public const TUTUP_BUKU = ['Admin', 'Manager Keuangan'];
 
+    /** Role yang boleh MENGUBAH bagan akun & peta akun SIRUS (tambah, ubah, nonaktif, hapus). Melihat = LAPORAN_LIHAT. */
+    public const AKUN_KELOLA = ['Admin', 'Manager Keuangan'];
+
     /* ─────────────── CONTOH ─────────────── */
 
     // /** Role yang boleh MENGHAPUS entri dokumen. */

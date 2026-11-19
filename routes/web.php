@@ -13,6 +13,14 @@ Route::middleware(['auth', 'menu'])->group(function () {
     // Daftarkan modul SIKEU di sini (buku besar, laporan keuangan, tutup buku), lalu tambahkan
     // entri menunya di App\Services\AppMenu::definitions() — daftar role di sana sekaligus membatasi akses halaman.
 
+    // ── MASTER ──
+    Route::livewire('/master/kelompok-akun', 'pages::master.kelompok-akun.kelompok-akun')
+        ->name('master.kelompok-akun');
+    Route::livewire('/master/bagan-akun', 'pages::master.bagan-akun.bagan-akun')
+        ->name('master.bagan-akun');
+    Route::livewire('/master/peta-akun', 'pages::master.peta-akun.peta-akun')
+        ->name('master.peta-akun');
+
     // ── CUTOFF JURNAL ──
     Route::livewire('/cutoff/snapshot-jurnal', 'pages::cutoff.snapshot-jurnal.snapshot-jurnal')
         ->name('cutoff.snapshot-jurnal');

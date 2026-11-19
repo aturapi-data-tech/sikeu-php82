@@ -41,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('jurnal.entri', fn ($user) => $user->hasAnyRole(AksiRole::JURNAL_ENTRI));
         Gate::define('periode.kunci', fn ($user) => $user->hasAnyRole(AksiRole::PERIODE_KUNCI));
         Gate::define('tutupBuku.jalankan', fn ($user) => $user->hasAnyRole(AksiRole::TUTUP_BUKU));
+        Gate::define('akun.kelola', fn ($user) => $user->hasAnyRole(AksiRole::AKUN_KELOLA));
 
         // Blade directive untuk render path TTD user (dua format kolom
         // myuser_ttd_image: filename saja vs legacy 'UserTtd/abc.png') —

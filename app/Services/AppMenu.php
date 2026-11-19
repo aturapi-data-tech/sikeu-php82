@@ -90,6 +90,11 @@ class AppMenu
         return [
             // Role ditulis huruf kecil: 'admin', 'manager keuangan', 'staf akuntansi', 'direksi'.
 
+            // ── Master ─────────────────────────────────────────────────
+            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 0, 'route' => 'master.kelompok-akun', 'title' => 'Kelompok Akun', 'desc' => 'Setup akun Neraca & Laba Rugi per kelompok (digit pertama kode akun)', 'roles' => ['admin', 'manager keuangan', 'staf akuntansi', 'direksi'], 'badge' => 'N/L']),
+            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 1, 'route' => 'master.bagan-akun', 'title' => 'Bagan Akun', 'desc' => 'Daftar akun buku besar (SAK EP): tambah, ubah, nonaktifkan akun', 'roles' => ['admin', 'manager keuangan', 'staf akuntansi', 'direksi'], 'badge' => 'COA']),
+            $entry(['group' => 'Master', 'groupOrder' => 0, 'order' => 2, 'route' => 'master.peta-akun', 'title' => 'Peta Akun SIRUS', 'desc' => 'Pasangan akun SIRUS ke akun SIKEU — posting snapshot ditolak bila ada yang belum dipetakan', 'roles' => ['admin', 'manager keuangan', 'staf akuntansi', 'direksi'], 'badge' => 'MAP']),
+
             // ── Cutoff Jurnal ──────────────────────────────────────────
             $entry(['group' => 'Cutoff Jurnal', 'groupOrder' => 1, 'order' => 1, 'route' => 'cutoff.snapshot-jurnal', 'title' => 'Snapshot Jurnal', 'desc' => 'Ambil jurnal SIRUS satu bulan sebagai versi baru (cutoff) — versi lama tidak ditimpa', 'roles' => ['admin', 'manager keuangan', 'staf akuntansi'], 'badge' => 'SNP']),
             $entry(['group' => 'Cutoff Jurnal', 'groupOrder' => 1, 'order' => 2, 'route' => 'cutoff.banding-versi', 'title' => 'Bandingkan Versi', 'desc' => 'Cari transaksi yang baru, hilang, atau berubah antara dua versi snapshot', 'roles' => ['admin', 'manager keuangan', 'staf akuntansi', 'direksi'], 'badge' => 'DIF']),
