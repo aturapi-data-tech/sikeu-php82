@@ -157,7 +157,7 @@ Kode: `SnapshotJurnal`, `BukuBesar`, `BaganAkun`, `FormatKodeAkun`. Detail tekni
 | Prioritas | Butuh | Alasan |
 |---|---|---|
 | 1 | ~~Laporan Laba Rugi~~ SELESAI; sisa: **form Susunan Laporan** (ubah baris template tanpa SQL) | universal |
-| 2 | **Saldo awal** dari SIRUS `tktxn_saldoawalakuns` via API + koreksi manual + jurnal SALDO_AWAL | syarat Neraca |
+| 2 | ~~Saldo awal~~ SELESAI (`App\Support\SaldoAwal`, layar Buku Besar › Saldo Awal, API SIRUS `/saldo-awal/{tahun}`) | syarat Neraca |
 | 3 | **Neraca** + **Laporan Perubahan Ekuitas/Aset Neto** (tambah template ke `sikeumst_lap_hdrs`) | set laporan SAK EP |
 | 4 | **Jurnal Umum / Penyesuaian** (MANUAL, D/K bebas, wajib seimbang, periode Buka, `jurnal.entri`) | tempat semua koreksi §5.6 |
 | 5 | **Arus Kas** metode langsung (kas × lawan × kategori) + tidak langsung | set laporan |
@@ -186,7 +186,17 @@ Kode: `SnapshotJurnal`, `BukuBesar`, `BaganAkun`, `FormatKodeAkun`. Detail tekni
 
 ---
 
-## 8. Jebakan yang sudah diketahui
+## 8. Saldo awal dari SIRUS — temuan data (2026)
+
+- `tktxn_saldoawalakuns` 2026 **tidak seimbang ±Rp 9,26 M** (K lebih). Penyebab: akun **L01 "Laba (Rugi)"** dipakai tutup
+  buku SIRUS sebagai PENYEIMBANG (Σ D − Σ K dibawa terus), bukan laba sebenarnya; aset tetap/ekuitas lama tak lengkap.
+- Di SIKEU selisih **tidak pernah diseimbangkan otomatis**: pemakai memilih akun penampungnya (saran: Akun Penampung
+  1.1.09.001 — wajib nol saat tutup periode, jadi memaksa penelusuran). Keputusan akhir = manajemen + KAP.
+- Saldo bersisi terbalik di sumber: Persediaan Apotek **kredit 1,43 M**, Kas Apotek kredit 2,5 jt, Piutang Klinik kredit 46,65 jt.
+- Saldo awal akun Laba Rugi & laba berjalan dipindah ke akun laba ditahan (pengaturan `akun.laba_ditahan` / `akun.laba_berjalan`).
+- Saldo awal per **1 Januari** → semua bulan Jan s/d bulan laporan harus diposting supaya Neraca benar.
+
+## 9. Jebakan yang sudah diketahui
 
 - Oracle 10.2.0.1: UNION ALL besar → **wrong result**. Agregasi laporan per cabang/per kelompok kecil; jangan satu UNION raksasa.
 - Teks laporan & keterangan jurnal: ASCII saja (DB WE8ISO8859P1; "—", "≤" jadi "¿").

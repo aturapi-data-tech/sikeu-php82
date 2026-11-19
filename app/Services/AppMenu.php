@@ -83,6 +83,7 @@ class AppMenu
 
             // ── Buku Besar ─────────────────────────────────────────────
             $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 1, 'route' => 'buku-besar.periode', 'title' => 'Periode & Posting', 'desc' => 'Buka tahun buku, sahkan versi snapshot & posting ke buku besar, kunci periode', 'izin' => 'laporan.lihat', 'badge' => 'PER']),
+            $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 1.5, 'route' => 'buku-besar.saldo-awal', 'title' => 'Saldo Awal', 'desc' => 'Saldo akun per 1 Januari: tarik dari SIRUS, koreksi, seimbangkan, sahkan', 'izin' => 'laporan.lihat', 'badge' => 'SA']),
             $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 2, 'route' => 'buku-besar.neraca-saldo', 'title' => 'Neraca Saldo', 'desc' => 'Saldo awal, mutasi & saldo akhir tiap akun per periode — cek D = K', 'izin' => 'laporan.lihat', 'badge' => 'NS']),
             $entry(['group' => 'Buku Besar', 'groupOrder' => 2, 'order' => 3, 'route' => 'buku-besar.buku-besar', 'title' => 'Buku Besar', 'desc' => 'Mutasi & saldo berjalan per akun, rinci sampai transaksi SIRUS', 'izin' => 'laporan.lihat', 'badge' => 'BB']),
 

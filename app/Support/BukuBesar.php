@@ -19,7 +19,8 @@ use RuntimeException;
  *     tetap tersimpan sebagai jejak), lalu jurnal versi baru diposting. Periode Kunci/Tutup menolak.
  *
  * SALDO (neraca saldo)
- *   saldo = Σ (debit − kredit) jurnal berstatus P. Akun Neraca (kelompok N) kumulatif sejak awal; akun Laba Rugi
+ *   saldo = Σ (debit − kredit) jurnal berstatus P; jurnal sumber SALDO_AWAL (App\Support\SaldoAwal) dihitung sebagai
+ *   saldo AWAL periodenya, bukan mutasi. Akun Neraca (kelompok N) kumulatif sejak awal; akun Laba Rugi
  *   (kelompok L) hanya sejak Januari tahun berjalan — laba/rugi tahun-tahun sebelumnya yang belum ditutup buku
  *   ditampilkan sebagai satu baris "Laba (rugi) tahun lalu belum ditutup buku" supaya neraca saldo tetap seimbang.
  */
@@ -303,9 +304,9 @@ class BukuBesar
         $awalTahun = substr($periode, 0, 4) . '01';
         $rows = DB::select(
             "SELECT a.akun_id, a.nama, a.kelompok_id, a.saldo_normal, k.jenis_laporan,
-                    NVL(SUM(CASE WHEN h.periode < ? THEN d.debit - d.kredit END), 0) AS awal,
-                    NVL(SUM(CASE WHEN h.periode = ? THEN d.debit END), 0) AS mutasi_debit,
-                    NVL(SUM(CASE WHEN h.periode = ? THEN d.kredit END), 0) AS mutasi_kredit
+                    NVL(SUM(CASE WHEN h.periode < ? OR (h.periode = ? AND h.sumber = 'SALDO_AWAL') THEN d.debit - d.kredit END), 0) AS awal,
+                    NVL(SUM(CASE WHEN h.periode = ? AND h.sumber <> 'SALDO_AWAL' THEN d.debit END), 0) AS mutasi_debit,
+                    NVL(SUM(CASE WHEN h.periode = ? AND h.sumber <> 'SALDO_AWAL' THEN d.kredit END), 0) AS mutasi_kredit
                FROM sikeutxn_jurnal_dtls d
                JOIN sikeutxn_jurnal_hdrs h ON h.jurnal_id = d.jurnal_id
                JOIN sikeumst_akuns a ON a.akun_id = d.akun_id
@@ -314,7 +315,7 @@ class BukuBesar
                 AND (k.jenis_laporan = 'N' OR h.periode >= ?)
               GROUP BY a.akun_id, a.nama, a.kelompok_id, a.saldo_normal, k.jenis_laporan
               ORDER BY a.akun_id",
-            [$periode, $periode, $periode, $periode, $awalTahun]
+            [$periode, $periode, $periode, $periode, $periode, $awalTahun]
         );
         $labaTahunLalu = (float) (DB::selectOne(
             "SELECT NVL(SUM(d.kredit - d.debit), 0) AS nilai
@@ -372,8 +373,9 @@ class BukuBesar
         $saldoAwal = (float) (DB::selectOne(
             "SELECT NVL(SUM(d.debit - d.kredit), 0) AS nilai FROM sikeutxn_jurnal_dtls d
                JOIN sikeutxn_jurnal_hdrs h ON h.jurnal_id = d.jurnal_id
-              WHERE h.status = 'P' AND d.akun_id = ? AND h.periode < ?" . ($akun->jenis_laporan === 'L' ? ' AND h.periode >= ?' : ''),
-            $akun->jenis_laporan === 'L' ? [$akunId, $periodeDari, $awalTahun] : [$akunId, $periodeDari]
+              WHERE h.status = 'P' AND d.akun_id = ? AND (h.periode < ? OR (h.periode = ? AND h.sumber = 'SALDO_AWAL'))"
+                . ($akun->jenis_laporan === 'L' ? ' AND h.periode >= ?' : ''),
+            $akun->jenis_laporan === 'L' ? [$akunId, $periodeDari, $periodeDari, $awalTahun] : [$akunId, $periodeDari, $periodeDari]
         )->nilai ?? 0);
 
         $rows = DB::select(
@@ -384,9 +386,10 @@ class BukuBesar
                LEFT JOIN sikeumst_akuns l ON l.akun_id = d.akun_lawan_id
                LEFT JOIN sikeutxn_snap_cabangs c ON h.sumber = 'SIRUS' AND c.snap_id = TO_NUMBER(h.referensi_id) AND c.cabang_kunci = d.cabang_kunci
               WHERE h.status = 'P' AND d.akun_id = ? AND h.periode >= ? AND h.periode <= ?
+                AND NOT (h.sumber = 'SALDO_AWAL' AND h.periode = ?)
               GROUP BY h.jurnal_id, h.no_jurnal, h.tanggal, h.sumber, h.referensi_id, d.akun_lawan_id, l.nama, d.cabang_kunci
               ORDER BY h.tanggal, h.jurnal_id, d.cabang_kunci, d.akun_lawan_id",
-            [$akunId, $periodeDari, $periodeSampai]
+            [$akunId, $periodeDari, $periodeSampai, $periodeDari]
         );
 
         return ['saldo_awal' => round($saldoAwal, 2), 'baris' => array_map(fn ($row) => (array) $row, $rows)];

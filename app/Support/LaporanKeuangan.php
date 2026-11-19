@@ -53,7 +53,7 @@ class LaporanKeuangan
             "SELECT d.akun_id, NVL(SUM(d.debit), 0) AS debit, NVL(SUM(d.kredit), 0) AS kredit
                FROM sikeutxn_jurnal_dtls d
                JOIN sikeutxn_jurnal_hdrs h ON h.jurnal_id = d.jurnal_id
-              WHERE h.status = 'P' AND h.periode >= ? AND h.periode <= ?
+              WHERE h.status = 'P' AND h.periode >= ? AND h.periode <= ? AND h.sumber <> 'SALDO_AWAL'
               GROUP BY d.akun_id",
             [$periodeDari, $periodeSampai]
         );
