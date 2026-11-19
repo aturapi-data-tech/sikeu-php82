@@ -2,6 +2,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
 use App\Support\BukuBesar;
@@ -53,6 +54,13 @@ new class extends Component {
             $this->periode = (string) (DB::table('sikeumst_periodes')->whereNotNull('snap_id_sah')->max('periode')
                 ?? DB::table('sikeumst_periodes')->max('periode') ?? now()->format('Ym'));
         }
+    }
+
+    /** Tombol Tarik dari SIRUS selesai → hitung ulang neraca saldo. */
+    #[On('tarik-sirus.selesai')]
+    public function segarkanSetelahTarik(): void
+    {
+        unset($this->hasil, $this->akunTersaring, $this->jumlahBerlawanan, $this->kelompokRows, $this->seimbang);
     }
 
     public function resetFilters(): void
@@ -154,6 +162,8 @@ new class extends Component {
                     <div class="flex items-center gap-2">
                         @if ($this->seimbang)
                             <x-badge variant="success">Seimbang (D = K)</x-badge>
+                        @else
+                            <x-badge variant="danger">TIDAK seimbang</x-badge>
                         @endif
                         @if ($this->jumlahBerlawanan > 0)
                             <button type="button" wire:click="$toggle('hanyaBerlawanan')" aria-pressed="{{ $hanyaBerlawanan ? 'true' : 'false' }}"
@@ -161,9 +171,8 @@ new class extends Component {
                                 class="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green {{ $hanyaBerlawanan ? 'bg-danger-strong text-white' : 'bg-danger-soft text-fg-danger-strong hover:ring-1 hover:ring-fg-danger-strong' }}">
                                 <x-ikon-peringatan /> {{ $this->jumlahBerlawanan }} saldo berlawanan{{ $hanyaBerlawanan ? ' (disaring)' : '' }}
                             </button>
-                        @else
-                            <x-badge variant="danger">TIDAK seimbang</x-badge>
                         @endif
+                        <livewire:pages::buku-besar.tarik-sirus.tarik-sirus-tombol :periode="$periode" wire:key="tarik-sirus-{{ $periode }}" />
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
