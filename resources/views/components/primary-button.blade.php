@@ -1,4 +1,6 @@
 @props([
+    // true = ukuran baris tabel (px-3 py-1.5); bawaan = ukuran toolbar/form/footer
+    'kecil' => false,
     'type' => 'submit',
     'disabled' => false,
 ])
@@ -17,7 +19,8 @@
     {{ $attributes->class([
         // Flowbite v4 (warna = token brand di tailwind.config.cjs / app.css --fb-*)
         'inline-flex items-center justify-center gap-2 box-border border',
-        'px-4 py-2.5 rounded-base shadow-xs',
+        // kecil = tombol aksi di BARIS TABEL (satu ukuran baku, bukan penimpaan px/py lewat class)
+        $kecil ? 'px-3 py-1.5 rounded-base shadow-xs' : 'px-4 py-2.5 rounded-base shadow-xs',
         'text-sm font-medium leading-5',
         'transition-colors duration-150',
         'focus:outline-none focus:ring-4',

@@ -7,6 +7,7 @@
     'cancelText' => 'Batal',
     'disabled' => false,
     'wireTarget' => null, // default: nama method dari $action — override bila perlu target lain
+    'kecil' => false, // true = ukuran tombol baris tabel (px-3 py-1.5), sama dengan prop kecil komponen tombol lain
 ])
 
 @php
@@ -19,7 +20,7 @@
     $loadingTarget = $wireTarget ?? \Illuminate\Support\Str::before($action, '(');
 
     // class trigger button — disesuaikan dengan komponen button standar
-    $base = 'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors duration-150';
+    $base = 'inline-flex items-center justify-center gap-2 ' . ($kecil ? 'px-3 py-1.5' : 'px-5 py-2.5') . ' rounded-lg text-sm font-medium whitespace-nowrap transition-colors duration-150';
 
     // Warna tombol konfirmasi & ikon judul mengikuti pemicunya
     $jenisKonfirmasi = match ($variant) {

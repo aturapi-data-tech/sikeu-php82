@@ -14,6 +14,9 @@
       Berdesimal (persen, PPN) — sebutkan berapa angka di belakang koma:
       <x-text-input-number wire:model="pph21Persen" :decimals="2" />
 
+      Nominal uang (selalu 2 desimal, 999,999,999.99 — nol di belakang koma TIDAK dibuang):
+      <x-text-input-number wire:model="debit" :decimals="2" uang />
+
     Catatan:
       - decimals = 0 (bawaan) -> nilai ke PHP selalu integer bersih
       - decimals > 0          -> nilai ke PHP float, titik sebagai pemisah desimal
@@ -37,6 +40,8 @@
     'extraBlur' => null,
     // Angka di belakang koma. 0 = integer (perilaku lama, tidak berubah).
     'decimals' => 0,
+    // true = nominal uang: desimal selalu ditampilkan penuh (1,250,000.50), bukan dipangkas (1,250,000.5).
+    'uang' => false,
 ])
 
 @php
@@ -55,6 +60,8 @@
     $modelValue ??= $attributes->get('value');
 
     $desimal = max(0, (int) $decimals);
+    // Intl.NumberFormat: mode uang menampilkan desimal penuh; selain itu nol di belakang dipangkas
+    $minimumDesimal = $uang ? $desimal : 0;
 
     // Mode integer memakai (int), BUKAN (float) yang dibulatkan — supaya nilai
     // yang sudah tersimpan tampil persis seperti sebelum prop ini ada.
@@ -66,7 +73,7 @@
         // Nol di belakang koma dibuang: 2,50 ditampilkan "2.5", 10,00 jadi "10".
         // rtrim aman di sini karena hanya dijalankan bila ada titiknya.
         $initialValue = number_format((float) $modelValue, $desimal, '.', ',');
-        if (str_contains($initialValue, '.')) {
+        if (!$uang && str_contains($initialValue, '.')) {
             $initialValue = rtrim(rtrim($initialValue, '0'), '.');
         }
     }
@@ -97,7 +104,7 @@
             if (document.activeElement === $el) return;
             let raw = ({{ $desimal }} > 0 ? parseFloat(val) : parseInt(val)) || 0;
             $el.value = raw > 0
-                ? new Intl.NumberFormat('en-US', { maximumFractionDigits: {{ $desimal }} }).format(raw)
+                ? new Intl.NumberFormat('en-US', { minimumFractionDigits: {{ $minimumDesimal }}, maximumFractionDigits: {{ $desimal }} }).format(raw)
                 : '';
         })" @endif
     x-on:focus="$el.value = $el.value.replace(/,/g, '')"
@@ -155,7 +162,7 @@
         @if ($wireModel) $wire.set('{{ $wireModel }}', raw); @endif
         @if ($extraBlur) {!! $extraBlur !!}; @endif
         $el.value = raw > 0
-            ? new Intl.NumberFormat('en-US', { maximumFractionDigits: desimal }).format(raw)
+            ? new Intl.NumberFormat('en-US', { minimumFractionDigits: {{ $minimumDesimal }}, maximumFractionDigits: desimal }).format(raw)
             : '';
     "
     {{ $attrs->merge([

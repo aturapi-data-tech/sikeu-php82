@@ -291,7 +291,7 @@ new class extends Component {
                                         <td class="ds-c">
                                             <div class="flex justify-end gap-2">
                                                 @if ($row->tipe === 'H' && $row->aktif === '1' && (int) $row->tingkat < FormatKodeAkun::jumlahTingkat())
-                                                    <x-secondary-button type="button" class="px-2.5 py-1.5 text-sm"
+                                                    <x-secondary-button type="button" kecil
                                                         wire:click="openCreate('{{ $row->akun_id }}')"
                                                         aria-label="Tambah akun di bawah {{ $row->akun_id }}"><x-ikon nama="tambah" /> Tambah Anak</x-secondary-button>
                                                 @endif

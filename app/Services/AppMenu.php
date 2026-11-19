@@ -91,6 +91,7 @@ class AppMenu
             $entry(['group' => 'Data Induk', 'groupOrder' => 3, 'order' => 2, 'route' => 'master.kelompok-akun', 'title' => 'Kelompok Akun', 'desc' => 'Pembagian akun Neraca & Laba Rugi per kelompok (tingkat 1 kode akun)', 'izin' => 'laporan.lihat', 'badge' => 'KA']),
             $entry(['group' => 'Data Induk', 'groupOrder' => 3, 'order' => 3, 'route' => 'master.bagan-akun', 'title' => 'Bagan Akun', 'desc' => 'Daftar akun buku besar (SAK EP): tambah, ubah, nonaktifkan akun', 'izin' => 'laporan.lihat', 'badge' => 'BA']),
             $entry(['group' => 'Data Induk', 'groupOrder' => 3, 'order' => 4, 'route' => 'master.peta-akun', 'title' => 'Peta Akun SIRUS', 'desc' => 'Pasangan akun SIRUS ke akun SIKEU - pengesahan ditolak bila ada yang belum dipetakan', 'izin' => 'laporan.lihat', 'badge' => 'PA']),
+            $entry(['group' => 'Data Induk', 'groupOrder' => 3, 'order' => 5, 'route' => 'master.susunan-laporan', 'title' => 'Susunan Laporan', 'desc' => 'Template baris Laba Rugi & Neraca: Umum / Internal, salin, atur baris & akun, pemeriksaan akun yatim / dobel', 'izin' => 'laporan.lihat', 'badge' => 'SL']),
 
             // ── 4. Panduan ─────────────────────────────────────────────
             $entry(['group' => 'Panduan', 'groupOrder' => 4, 'order' => 1, 'route' => 'panduan.cara-pakai', 'title' => 'Cara Pakai SIKEU', 'desc' => 'Langkah tutup bulan, aturan kunci / buka kunci berurutan, SIRUS berubah setelah dikunci, arti warna tombol, siapa boleh apa', 'izin' => null, 'badge' => '?']),

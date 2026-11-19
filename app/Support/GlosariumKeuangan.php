@@ -122,7 +122,7 @@ class GlosariumKeuangan
                     ['Buka kunci', 'Membuka kembali bulan yang sudah final, wajib alasan (tercatat di log). Berurutan dari bulan terkunci TERBARU (bawah ke atas).', 'Tarik Data SIRUS > Buka Kunci di bulan terkunci terakhir.'],
                     ['Tarik ulang', 'Menarik lagi jurnal SIRUS bulan yang sudah pernah ditarik. Hanya menyimpan versi baru untuk dibandingkan; buku tidak berubah, jadi boleh juga untuk bulan yang sudah dikunci.', 'Tanda "sama" / "berbeda" di kolom Versi Disahkan.'],
                     ['Jurnal koreksi', 'Jurnal umum di bulan yang masih Buka untuk membetulkan selisih yang baru ketahuan setelah bulan lalu dikunci - laporan yang sudah final tidak diubah.', 'Pembukuan > Jurnal Umum.'],
-                    ['Template laporan', 'Susunan baris laporan yang disimpan sebagai data, bisa diubah tanpa program.', 'Baris Laba Rugi & Neraca.'],
+                    ['Template laporan', 'Susunan baris laporan yang disimpan sebagai data, bisa diubah tanpa program. Satu laporan boleh punya banyak template (mis. Umum untuk pihak luar, Internal untuk manajemen); totalnya harus sama, bedanya hanya rincian.', 'Data Induk > Susunan Laporan; pilihan Template di layar Laba Rugi / Neraca.'],
                     ['Akun yatim', 'Akun yang tidak masuk baris laporan mana pun sehingga angkanya hilang dari laporan.', 'Peringatan merah di atas laporan.'],
                     ['Header / Detail', 'Akun wadah (tidak dijurnal) / akun yang dijurnal.', 'Header 1.1.01 Kas dan Setara Kas; Detail 1.1.01.001.'],
                     ['Status Sementara / Final', 'Laporan dari periode yang belum / sudah dikunci.', 'Badge di atas laporan.'],

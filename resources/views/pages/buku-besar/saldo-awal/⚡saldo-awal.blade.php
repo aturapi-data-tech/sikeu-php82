@@ -136,8 +136,8 @@ new class extends Component {
         $barisList = $jurnal ? (new SaldoAwal())->baris((int) $jurnal->jurnal_id) : [];
         foreach ($barisList as $baris) {
             $this->isian[self::kunciIsian((string) $baris['akun_id'])] = [
-                'd' => (float) $baris['debit'] != 0.0 ? Format::uang((float) $baris['debit']) : '',
-                'k' => (float) $baris['kredit'] != 0.0 ? Format::uang((float) $baris['kredit']) : '',
+                'd' => (float) $baris['debit'] != 0.0 ? (float) $baris['debit'] : '',
+                'k' => (float) $baris['kredit'] != 0.0 ? (float) $baris['kredit'] : '',
                 'ket' => (string) ($baris['keterangan'] ?? ''),
             ];
         }
@@ -152,8 +152,7 @@ new class extends Component {
             $akunId = hex2bin(substr((string) $kunci, 1));
             $nilaiSisi = [];
             foreach (['d', 'k'] as $sisi) {
-                $teks = trim((string) ($baris[$sisi] ?? ''));
-                $nilaiSisi[$sisi] = $teks === '' ? 0.0 : Format::uraiUang($teks);
+                $nilaiSisi[$sisi] = Format::angka($baris[$sisi] ?? '');
                 if ($nilaiSisi[$sisi] === null) {
                     $this->addError("isian.{$kunci}.{$sisi}", 'Angka tidak terbaca.');
                     $valid = false;
@@ -174,7 +173,7 @@ new class extends Component {
         $debit = 0.0;
         $kredit = 0.0;
         foreach ($this->isian as $baris) {
-            $nilai = (Format::uraiUang(trim((string) ($baris['d'] ?? ''))) ?? 0.0) - (Format::uraiUang(trim((string) ($baris['k'] ?? ''))) ?? 0.0);
+            $nilai = (Format::angka($baris['d'] ?? '') ?? 0.0) - (Format::angka($baris['k'] ?? '') ?? 0.0);
             $debit += max($nilai, 0);
             $kredit += max(-$nilai, 0);
         }
@@ -393,8 +392,8 @@ new class extends Component {
                                     @php
                                         $akunId = $akun['akun_id'];
                                         $kunci = $this::kunciIsian($akunId);
-                                        $nilaiD = Format::uraiUang(trim((string) ($isian[$kunci]['d'] ?? ''))) ?? 0.0;
-                                        $nilaiK = Format::uraiUang(trim((string) ($isian[$kunci]['k'] ?? ''))) ?? 0.0;
+                                        $nilaiD = Format::angka($isian[$kunci]['d'] ?? '') ?? 0.0;
+                                        $nilaiK = Format::angka($isian[$kunci]['k'] ?? '') ?? 0.0;
                                         $bersih = $nilaiD - $nilaiK;
                                         $berlawanan = ($bersih < 0 && $akun['saldo_normal'] === 'D') || ($bersih > 0 && $akun['saldo_normal'] === 'K');
                                     @endphp
@@ -412,14 +411,13 @@ new class extends Component {
                                         <td class="text-body dark:text-gray-300">
                                             {{ $akun['nama'] }}
                                             @if ($berlawanan)
-                                                <span class="inline-flex items-center gap-1 ml-1 text-[11px] text-fg-danger-strong"><x-ikon-peringatan label="Saldo berlawanan dengan saldo normal" /> berlawanan</span>
+                                                <span class="inline-flex items-center gap-1 ml-1 text-xs text-fg-danger-strong"><x-ikon-peringatan label="Saldo berlawanan dengan saldo normal" /> berlawanan</span>
                                             @endif
                                         </td>
                                         @foreach (['d' => 'Debit', 'k' => 'Kredit'] as $sisi => $labelSisi)
                                             <td>
-                                                <x-text-input wire:model.blur="isian.{{ $kunci }}.{{ $sisi }}" inputmode="decimal" :disabled="!$bolehUbah"
-                                                    aria-label="{{ $labelSisi }} {{ $akunId }}" :error="$errors->has('isian.' . $kunci . '.' . $sisi)"
-                                                    class="text-right tabular-nums" />
+                                                <x-text-input-number wire:model="isian.{{ $kunci }}.{{ $sisi }}" :decimals="2" uang :disabled="!$bolehUbah"
+                                                    aria-label="{{ $labelSisi }} {{ $akunId }}" :error="$errors->has('isian.' . $kunci . '.' . $sisi)" />
                                             </td>
                                         @endforeach
                                         <td><x-text-input wire:model.blur="isian.{{ $kunci }}.ket" maxlength="500" :disabled="!$bolehUbah" aria-label="Keterangan {{ $akunId }}" /></td>

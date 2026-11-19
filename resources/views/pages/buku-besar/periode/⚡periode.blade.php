@@ -409,9 +409,7 @@ new class extends Component {
                             <x-secondary-button type="button" wire:click="geserTahun(-1)" :disabled="$snapIdProses !== null" class="px-3" aria-label="Tahun sebelumnya"><x-ikon nama="sebelumnya" /></x-secondary-button>
                             <div class="relative">
                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                    <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
+                                    <x-ikon nama="kalender" class="text-body" />
                                 </div>
                                 <x-text-input id="tahun" type="text" inputmode="numeric" maxlength="4" wire:model.live.debounce.500ms="tahun"
                                     :disabled="$snapIdProses !== null" placeholder="yyyy" class="block pl-10 w-28" />
@@ -484,7 +482,7 @@ new class extends Component {
                             @endif
                         </div>
                         @if ($modeAntrean)
-                            <x-danger-button type="button" wire:click="hentikanAntrean" class="px-3 py-1.5 text-xs"><x-ikon nama="hentikan" ukuran="w-3.5 h-3.5" /> Hentikan antrean</x-danger-button>
+                            <x-danger-button type="button" wire:click="hentikanAntrean" kecil><x-ikon nama="hentikan" ukuran="w-3.5 h-3.5" /> Hentikan antrean</x-danger-button>
                         @endif
                     </div>
                     @if ($snapIdProses !== null)
@@ -545,24 +543,24 @@ new class extends Component {
                                             @case('T') <x-badge variant="gray">Tutup</x-badge> @break
                                         @endswitch
                                         @if ($row['alasan_buka'] && $row['status'] === 'B')
-                                            <div class="mt-1 text-[11px] text-muted dark:text-gray-400" title="{{ $row['alasan_buka'] }}">pernah dibuka ulang</div>
+                                            <div class="mt-1 text-xs text-muted dark:text-gray-400" title="{{ $row['alasan_buka'] }}">pernah dibuka ulang</div>
                                         @endif
                                     </td>
                                     <td>
                                         @if ($row['versi_sah'])
                                             <span class="font-medium text-ink dark:text-gray-200">Versi {{ $row['versi_sah'] }}</span>
                                             @if ($row['jurnal_sirus'])
-                                                <div class="text-[11px] text-muted dark:text-gray-400">{{ $row['jurnal_sirus']->jumlah }} jurnal · {{ Format::waktu($row['jurnal_sirus']->terakhir) }}</div>
+                                                <div class="text-xs text-muted dark:text-gray-400">{{ $row['jurnal_sirus']->jumlah }} jurnal · {{ Format::waktu($row['jurnal_sirus']->terakhir) }}</div>
                                             @endif
                                             @if ($row['status_versi_baru'] === 'sama')
-                                                <div class="mt-1 text-[11px] font-medium text-fg-success-strong">Tarikan terbaru (versi {{ $row['versi_terbaru'] }}) sama — SIRUS tidak berubah</div>
+                                                <div class="mt-1 text-xs font-medium text-fg-success-strong">Tarikan terbaru (versi {{ $row['versi_terbaru'] }}) sama — SIRUS tidak berubah</div>
                                             @elseif ($row['status_versi_baru'] === 'beda')
                                                 <a href="{{ route('cutoff.banding-versi', ['periode' => $row['periode'], 'lama' => $row['snap_id_sah'], 'baru' => $row['snap_id_terbaru']]) }}" wire:navigate
                                                     class="inline-flex items-center gap-1 px-2 py-0.5 mt-1 text-xs font-medium rounded bg-warning-soft text-fg-warning hover:underline">
                                                     <x-ikon-peringatan /> Versi {{ $row['versi_terbaru'] }} berbeda — lihat transaksi yang berubah
                                                 </a>
                                                 @if ($row['status'] !== 'B')
-                                                    <div class="mt-1 text-[11px] text-muted dark:text-gray-400">
+                                                    <div class="mt-1 text-xs text-muted dark:text-gray-400">
                                                         Periode terkunci: koreksi selisihnya lewat
                                                         <a href="{{ route('buku-besar.jurnal-umum') }}" wire:navigate class="underline">Jurnal Umum</a> di bulan yang masih Buka (disarankan),
                                                         atau Buka Kunci → Ganti Versi → Kunci lagi.
@@ -594,7 +592,7 @@ new class extends Component {
                                             {{-- Menarik versi baru tidak mengubah buku → tetap boleh di bulan terkunci (untuk cek perubahan SIRUS) --}}
                                             @if ($row['periode'] <= now()->format('Ym') && $bebas && ($row['status'] === 'B' || count($row['versi_list']) > 0))
                                                 @can('snapshot.ambil')
-                                                    <x-secondary-button type="button" class="px-3 py-1.5 text-sm" wire:click="ambilSnapshot('{{ $row['periode'] }}')">
+                                                    <x-secondary-button type="button" kecil wire:click="ambilSnapshot('{{ $row['periode'] }}')">
                                                         <x-ikon nama="muat-ulang" /> {{ count($row['versi_list']) > 0 ? 'Tarik ulang' : 'Tarik dari SIRUS' }}
                                                     </x-secondary-button>
                                                 @endcan
@@ -602,18 +600,18 @@ new class extends Component {
                                             @if ($row['status'] === 'B' && count($row['versi_list']) > 0 && $bebas && !$this->sebelumTahunMulai)
                                                 @can('jurnal.posting')
                                                     @if ($row['versi_sah'])
-                                                        <x-secondary-button type="button" class="px-3 py-1.5 text-sm" wire:click="bukaPosting('{{ $row['periode'] }}')">
+                                                        <x-secondary-button type="button" kecil wire:click="bukaPosting('{{ $row['periode'] }}')">
                                                             <x-ikon nama="setujui" /> Ganti Versi
                                                         </x-secondary-button>
                                                     @else
-                                                        <x-primary-button type="button" class="px-3 py-1.5 text-sm" wire:click="bukaPosting('{{ $row['periode'] }}')">
+                                                        <x-primary-button type="button" kecil wire:click="bukaPosting('{{ $row['periode'] }}')">
                                                             <x-ikon nama="setujui" /> Sahkan & Posting
                                                         </x-primary-button>
                                                     @endif
                                                 @endcan
                                             @endif
                                             @if ($row['versi_sah'])
-                                                <x-outline-button type="button" class="px-3 py-1.5 text-sm"
+                                                <x-outline-button type="button" kecil
                                                     x-on:click="Livewire.navigate('{{ route('buku-besar.neraca-saldo', ['periode' => $row['periode']]) }}')">
                                                     <x-ikon nama="lihat" /> Neraca Saldo
                                                 </x-outline-button>
@@ -621,7 +619,7 @@ new class extends Component {
                                             @if ($row['status'] === 'B' && $row['versi_sah'] && !$bolehKunci)
                                                 @can('periode.kunci')
                                                     {{-- Tampil tapi nonaktif + alasan, supaya pemakai tahu kenapa belum bisa dikunci --}}
-                                                    <x-secondary-button type="button" class="px-3 py-1.5 text-sm" disabled
+                                                    <x-secondary-button type="button" kecil disabled
                                                         title="{{ $this->alasanBelumGiliranKunci }}" aria-describedby="alasan-kunci-{{ $row['periode'] }}">
                                                         <x-ikon nama="kunci" /> Kunci
                                                     </x-secondary-button>
@@ -629,7 +627,7 @@ new class extends Component {
                                             @endif
                                             @if ($bolehKunci)
                                                 @can('periode.kunci')
-                                                    <x-confirm-button variant="primary" :action="'kunci(\'' . $row['periode'] . '\')'" class="px-3 py-1.5"
+                                                    <x-confirm-button variant="primary" :action="'kunci(\'' . $row['periode'] . '\')'" kecil
                                                         title="Kunci Periode {{ SnapshotJurnal::labelPeriode($row['periode']) }}"
                                                         message="Sesudah dikunci, periode ini tidak menerima posting / jurnal baru sampai dibuka kembali dengan alasan. Pastikan Neraca Saldo sudah diperiksa.">
                                                         <x-ikon nama="kunci" /> Kunci
@@ -638,11 +636,11 @@ new class extends Component {
                                             @endif
                                             @if ($bolehBukaKunci)
                                                 @can('periode.kunci')
-                                                    <x-warning-button type="button" class="px-3 py-1.5 text-sm" wire:click="bukaFormBukaKunci('{{ $row['periode'] }}')"><x-ikon nama="buka-kunci" /> Buka Kunci</x-warning-button>
+                                                    <x-warning-button type="button" kecil wire:click="bukaFormBukaKunci('{{ $row['periode'] }}')"><x-ikon nama="buka-kunci" /> Buka Kunci</x-warning-button>
                                                 @endcan
                                             @elseif ($row['status'] === 'K')
                                                 @can('periode.kunci')
-                                                    <x-secondary-button type="button" class="px-3 py-1.5 text-sm" disabled
+                                                    <x-secondary-button type="button" kecil disabled
                                                         title="Buka kunci berurutan dari bulan terbaru — buka {{ SnapshotJurnal::labelPeriode((string) $this->periodeBolehBukaKunci) }} dulu."
                                                         aria-describedby="alasan-kunci-{{ $row['periode'] }}">
                                                         <x-ikon nama="buka-kunci" /> Buka Kunci
@@ -652,9 +650,9 @@ new class extends Component {
                                         </div>
                                         @can('periode.kunci')
                                             @if ($row['status'] === 'B' && $row['versi_sah'] && !$bolehKunci)
-                                                <p id="alasan-kunci-{{ $row['periode'] }}" class="mt-1 text-[11px] text-right text-muted dark:text-gray-400">{{ $this->alasanBelumGiliranKunci }}</p>
+                                                <p id="alasan-kunci-{{ $row['periode'] }}" class="mt-1 text-xs text-right text-muted dark:text-gray-400">{{ $this->alasanBelumGiliranKunci }}</p>
                                             @elseif ($row['status'] === 'K' && !$bolehBukaKunci)
-                                                <p id="alasan-kunci-{{ $row['periode'] }}" class="mt-1 text-[11px] text-right text-muted dark:text-gray-400">Buka kunci berurutan dari bulan terbaru — buka {{ SnapshotJurnal::labelPeriode((string) $this->periodeBolehBukaKunci) }} dulu.</p>
+                                                <p id="alasan-kunci-{{ $row['periode'] }}" class="mt-1 text-xs text-right text-muted dark:text-gray-400">Buka kunci berurutan dari bulan terbaru — buka {{ SnapshotJurnal::labelPeriode((string) $this->periodeBolehBukaKunci) }} dulu.</p>
                                             @endif
                                         @endcan
                                     </td>

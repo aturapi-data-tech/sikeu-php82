@@ -275,12 +275,12 @@ new class extends Component {
                                                 @endcan
                                             @else
                                                 @if ($row['tahun'] === $this->tahunMulai)
-                                                    <x-outline-button type="button" class="px-3 py-1.5 text-sm" x-on:click="Livewire.navigate('{{ route('buku-besar.saldo-awal', ['tahun' => $row['tahun']]) }}')"><x-ikon nama="lihat" /> Saldo Awal</x-outline-button>
+                                                    <x-outline-button type="button" kecil x-on:click="Livewire.navigate('{{ route('buku-besar.saldo-awal', ['tahun' => $row['tahun']]) }}')"><x-ikon nama="lihat" /> Saldo Awal</x-outline-button>
                                                 @endif
-                                                <x-outline-button type="button" class="px-3 py-1.5 text-sm" x-on:click="Livewire.navigate('{{ route('buku-besar.periode', ['tahun' => $row['tahun']]) }}')"><x-ikon nama="lihat" /> Tarik Data SIRUS</x-outline-button>
+                                                <x-outline-button type="button" kecil x-on:click="Livewire.navigate('{{ route('buku-besar.periode', ['tahun' => $row['tahun']]) }}')"><x-ikon nama="lihat" /> Tarik Data SIRUS</x-outline-button>
                                                 @can('tutupBuku.jalankan')
                                                     @if ($row['ada_jurnal'] || $row['diposting'] > 0)
-                                                        <x-warning-button type="button" class="px-3 py-1.5 text-sm" wire:click="bukaReset({{ $row['tahun'] }})"><x-ikon nama="muat-ulang" /> Reset Tahun</x-warning-button>
+                                                        <x-warning-button type="button" kecil wire:click="bukaReset({{ $row['tahun'] }})"><x-ikon nama="muat-ulang" /> Reset Tahun</x-warning-button>
                                                     @elseif ($row['terkunci'] === 0)
                                                         <x-confirm-button variant="danger-soft" action="hapusTahun({{ $row['tahun'] }})" title="Hapus Tahun Buku {{ $row['tahun'] }}"
                                                             message="Tahun {{ $row['tahun'] }} belum dipakai. Ke-12 periodenya dihapus dan kembali Belum dibuka; hasil tarikan SIRUS tetap tersimpan.">
@@ -317,7 +317,7 @@ new class extends Component {
                         <div><x-secondary-button type="button" wire:click="simpanAkunLaba" wire:loading.attr="disabled" wire:target="simpanAkunLaba"><x-ikon nama="simpan" /> Simpan Akun Laba</x-secondary-button></div>
                     @endcan
                 </div>
-                <p class="mt-2 text-[11px] text-muted dark:text-gray-400">Dipakai Neraca: laba tahun-tahun lalu masuk akun laba ditahan; akun laba berjalan tidak punya saldo awal.</p>
+                <p class="mt-2 text-xs text-muted dark:text-gray-400">Dipakai Neraca: laba tahun-tahun lalu masuk akun laba ditahan; akun laba berjalan tidak punya saldo awal.</p>
             </x-border-form>
 
             {{-- LANJUT --}}

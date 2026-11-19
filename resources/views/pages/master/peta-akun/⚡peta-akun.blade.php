@@ -279,10 +279,10 @@ new class extends Component {
                                     <td>
                                         <div class="text-ink dark:text-gray-200">{{ $row['nama_sirus'] ?: '-' }}</div>
                                         @if ($row['aktif_sirus'] === false)
-                                            <span class="text-[11px] text-muted dark:text-gray-400">nonaktif di SIRUS</span>
+                                            <span class="text-xs text-muted dark:text-gray-400">nonaktif di SIRUS</span>
                                         @endif
                                     </td>
-                                    <td class="ds-c font-mono text-xs">{{ $row['dk_sirus'] ?: '-' }}</td>
+                                    <td class="ds-c font-mono">{{ $row['dk_sirus'] ?: '-' }}</td>
                                     <td>
                                         @if ($row['akun_id'])
                                             <span class="font-mono text-xs text-ink dark:text-gray-200">{{ $row['akun_id'] }}</span>

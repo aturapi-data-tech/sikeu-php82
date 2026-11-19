@@ -20,6 +20,8 @@ Route::middleware(['auth', 'menu'])->group(function () {
         ->name('master.bagan-akun');
     Route::livewire('/master/peta-akun', 'pages::master.peta-akun.peta-akun')
         ->name('master.peta-akun');
+    Route::livewire('/master/susunan-laporan', 'pages::master.susunan-laporan.susunan-laporan')
+        ->name('master.susunan-laporan');
     Route::livewire('/master/format-kode', 'pages::master.format-kode.format-kode')
         ->name('master.format-kode');
 

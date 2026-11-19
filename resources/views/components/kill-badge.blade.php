@@ -20,7 +20,7 @@
     };
 @endphp
 
-<div class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold {{ $cls }}"
+<div class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold {{ $cls }}"
      title="{{ $title }}">
     <span>{{ $icon }}</span>
     <span class="font-mono uppercase tracking-wide">{{ $label }}</span>

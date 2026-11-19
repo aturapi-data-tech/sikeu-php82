@@ -403,7 +403,7 @@ new class extends Component {
                                 :error="$errors->has('form.akun_id')" class="w-full mt-1 font-mono" />
                             <x-input-error :messages="$errors->get('form.akun_id')" class="mt-1" />
                             @if ($formMode === 'create' && $form['induk_id'] !== '')
-                                <p class="mt-1 text-[11px] text-muted dark:text-gray-400">
+                                <p class="mt-1 text-xs text-muted dark:text-gray-400">
                                     Tingkat {{ $tingkat }}, saran otomatis.
                                     @if (!$tipeBebas && FormatKodeAkun::awalKontra() > 0)
                                         Nomor {{ FormatKodeAkun::awalKontra() }} ke atas untuk akun kontra.
@@ -420,7 +420,7 @@ new class extends Component {
                                 </x-select-input>
                                 <x-input-error :messages="$errors->get('tipe')" class="mt-1" />
                                 @if (!$tipeBebas)
-                                    <p class="mt-1 text-[11px] text-muted dark:text-gray-400">Tingkat terakhir selalu Detail.</p>
+                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">Tingkat terakhir selalu Detail.</p>
                                 @endif
                             </div>
                         @endif
@@ -452,7 +452,7 @@ new class extends Component {
                                     <option value="K">Kredit</option>
                                 </x-select-input>
                                 <x-input-error :messages="$errors->get('form.saldo_normal')" class="mt-1" />
-                                <p class="mt-1 text-[11px] text-muted dark:text-gray-400">Ikut induk; beda dari kelompoknya = akun kontra (mis. akumulasi penyusutan).</p>
+                                <p class="mt-1 text-xs text-muted dark:text-gray-400">Ikut induk; beda dari kelompoknya = akun kontra (mis. akumulasi penyusutan).</p>
                             </div>
                             <div>
                                 <x-input-label value="Akun Kas/Bank" />
@@ -469,7 +469,7 @@ new class extends Component {
                                         <option value="{{ $kode }}">{{ $label }}</option>
                                     @endforeach
                                 </x-select-input>
-                                <p class="mt-1 text-[11px] text-muted dark:text-gray-400">Masuk bagian mana di arus kas saat akun ini jadi lawan transaksi kas.</p>
+                                <p class="mt-1 text-xs text-muted dark:text-gray-400">Masuk bagian mana di arus kas saat akun ini jadi lawan transaksi kas.</p>
                             </div>
                             <div>
                                 <x-input-label value="Kontrol Hutang/Piutang" />

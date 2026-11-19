@@ -22,10 +22,45 @@ class LaporanKeuangan
     public const JENIS_LABARUGI = 'LABARUGI';
     public const JENIS_NERACA = 'NERACA';
 
-    /** Template aktif pertama untuk satu jenis laporan. */
-    public static function template(string $jenis): ?object
+    public const NAMA_BULAN = [1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+    /** 202501 → "Januari 2025" */
+    public static function namaPeriode(string $periode): string
     {
-        return DB::table('sikeumst_lap_hdrs')->where('jenis', $jenis)->where('aktif', '1')->orderBy('lap_id')->first();
+        return self::NAMA_BULAN[(int) substr($periode, 4, 2)] . ' ' . substr($periode, 0, 4);
+    }
+
+    /** 202501 → "31 Januari 2025" (tanggal terakhir bulan itu) */
+    public static function tanggalAkhir(string $periode): string
+    {
+        $hari = cal_days_in_month(CAL_GREGORIAN, (int) substr($periode, 4, 2), (int) substr($periode, 0, 4));
+
+        return $hari . ' ' . self::namaPeriode($periode);
+    }
+
+    /**
+     * Template untuk satu jenis laporan: yang dipilih ($lapId, aktif & jenisnya cocok), atau yang ditandai BAWAAN,
+     * atau aktif pertama. Satu jenis boleh punya banyak template (mis. Umum / Internal) — DDL 09.
+     */
+    public static function template(string $jenis, ?int $lapId = null): ?object
+    {
+        $query = fn () => DB::table('sikeumst_lap_hdrs')->where('jenis', $jenis)->where('aktif', '1');
+        if ($lapId) {
+            $dipilih = $query()->where('lap_id', $lapId)->first();
+            if ($dipilih) {
+                return $dipilih;
+            }
+        }
+
+        return $query()->orderByDesc('bawaan')->orderBy('lap_id')->first();
+    }
+
+    /** Template aktif per jenis untuk pilihan di layar laporan: lap_id => nama (bawaan di depan). */
+    public static function daftarTemplate(string $jenis): array
+    {
+        return DB::table('sikeumst_lap_hdrs')->where('jenis', $jenis)->where('aktif', '1')
+            ->orderByDesc('bawaan')->orderBy('nama')->get(['lap_id', 'nama', 'bawaan'])
+            ->mapWithKeys(fn ($row) => [(int) $row->lap_id => $row->nama . ($row->bawaan === '1' ? ' (bawaan)' : '')])->all();
     }
 
     /**
@@ -219,15 +254,16 @@ class LaporanKeuangan
      * Laporan Laba Rugi untuk satu periode: kolom bulan berjalan & Januari s/d periode.
      * @return array{template: ?object, baris: array, kolom: array, pemeriksaan: array}
      */
-    public static function labaRugi(string $periode): array
+    public static function labaRugi(string $periode, ?int $lapId = null): array
     {
-        $template = self::template(self::JENIS_LABARUGI);
+        $template = self::template(self::JENIS_LABARUGI, $lapId);
         if (!$template) {
             return ['template' => null, 'baris' => [], 'kolom' => [], 'pemeriksaan' => ['galat' => ['Template Laba Rugi belum ada — jalankan database/sql/05_template_laporan.sql.']]];
         }
         $kolomList = [
-            'bulan' => ['judul' => SnapshotJurnal::labelPeriode($periode), 'dari' => $periode, 'sampai' => $periode],
-            'ytd' => ['judul' => '01 s/d ' . SnapshotJurnal::labelPeriode($periode), 'dari' => substr($periode, 0, 4) . '01', 'sampai' => $periode],
+            'bulan' => ['judul' => self::namaPeriode($periode), 'sub' => 'bulan ini saja', 'dari' => $periode, 'sampai' => $periode],
+            'ytd' => ['judul' => (str_ends_with($periode, '01') ? '' : 'Januari – ') . self::namaPeriode($periode), 'sub' => 'kumulatif sejak 1 Januari',
+                'dari' => substr($periode, 0, 4) . '01', 'sampai' => $periode],
         ];
         $akunLabaRugi = self::akunDetail('L');
 
@@ -287,16 +323,17 @@ class LaporanKeuangan
      * Neraca (Laporan Posisi Keuangan) per akhir periode, pembanding = 1 Januari tahun itu (saldo awal sah).
      * @return array{template: ?object, baris: array, kolom: array, pemeriksaan: array}
      */
-    public static function neraca(string $periode): array
+    public static function neraca(string $periode, ?int $lapId = null): array
     {
-        $template = self::template(self::JENIS_NERACA);
+        $template = self::template(self::JENIS_NERACA, $lapId);
         if (!$template) {
             return ['template' => null, 'baris' => [], 'kolom' => [], 'pemeriksaan' => ['galat' => ['Template Neraca belum ada — jalankan database/sql/07_template_neraca.sql.']]];
         }
         $periodeAwal = substr($periode, 0, 4) . '01';
         $kolomList = [
-            'akhir' => ['judul' => 'Akhir ' . SnapshotJurnal::labelPeriode($periode)],
-            'awal' => ['judul' => '1 Januari ' . substr($periode, 0, 4)],
+            // urutan kronologis (permintaan user 2026-11-19): awal tahun di kiri, akhir bulan di kanan
+            'awal' => ['judul' => '31 Desember ' . ((int) substr($periode, 0, 4) - 1), 'sub' => 'posisi awal tahun (saldo awal 1 Januari ' . substr($periode, 0, 4) . ')'],
+            'akhir' => ['judul' => self::tanggalAkhir($periode), 'sub' => 'posisi akhir bulan ini'],
         ];
         $sumberSaldo = ['akhir' => self::saldoAkhirPerAkun($periode), 'awal' => self::saldoAkhirPerAkun($periodeAwal, true)];
 
@@ -310,7 +347,8 @@ class LaporanKeuangan
         // Neraca menampung SEMUA akun Detail: akun Neraca lewat baris aset/liabilitas/ekuitas, akun Laba Rugi lewat laba berjalan
         $hasil = self::hitungTemplate(self::barisTemplate((int) $template->lap_id), self::akunDetail(), $nilaiPerKolom);
 
-        // Pemeriksaan: Σ saldo semua akun = 0 (D = K) dan baris aset = baris liabilitas + ekuitas
+        // Pemeriksaan: Σ saldo semua akun = 0 (D = K) dan baris aset = baris liabilitas + ekuitas.
+        // Kode baris total WAJIB 'TA' (total aset) & 'TLE' (total liabilitas + ekuitas) di setiap template Neraca.
         $barisPerKode = collect($hasil['baris'])->keyBy('kode');
         $selisih = [];
         foreach (array_keys($kolomList) as $kunci) {

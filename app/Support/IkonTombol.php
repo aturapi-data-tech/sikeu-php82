@@ -195,6 +195,26 @@ final class IkonTombol
             'label' => 'Kurangi (baris/tingkat di form), lawan dari Tambah — bukan menghapus data tersimpan',
             'paths' => ['M20 12H4'],
         ],
+        'rinci' => [
+            'tombol' => 'tombol/teks buka-tutup rincian (dibuka = diputar rotate-90)',
+            'label' => 'Buka / tutup rincian baris (chevron kanan; diputar 90 derajat saat terbuka)',
+            'paths' => ['M9 5l7 7-7 7'],
+        ],
+        'naik' => [
+            'tombol' => 'x-icon-button (ikon saja + sr-only)',
+            'label' => 'Pindah urutan ke atas (chevron atas)',
+            'paths' => ['M5 15l7-7 7 7'],
+        ],
+        'turun' => [
+            'tombol' => 'x-icon-button (ikon saja + sr-only)',
+            'label' => 'Pindah urutan ke bawah / buka pilihan (chevron bawah)',
+            'paths' => ['M19 9l-7 7-7-7'],
+        ],
+        'kalender' => [
+            'tombol' => 'ikon penanda di dalam isian tanggal / tahun (bukan tombol)',
+            'label' => 'Penanda isian tanggal, bulan, tahun',
+            'paths' => ['M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'],
+        ],
         'tukar' => [
             'tombol' => 'x-secondary-button (ikon saja + aria-label)',
             'label' => 'Tukar posisi dua pilihan (mis. versi lama <-> baru)',

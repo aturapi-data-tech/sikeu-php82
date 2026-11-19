@@ -179,7 +179,7 @@ new class extends Component {
                             <div wire:key="tingkat-{{ $tingkat }}" class="grid items-center grid-cols-12 gap-3">
                                 <label for="digit-{{ $tingkat }}" class="col-span-5 text-sm text-ink dark:text-gray-200">
                                     Tingkat {{ $tingkat }}
-                                    <span class="block text-[11px] text-muted dark:text-gray-400">
+                                    <span class="block text-xs text-muted dark:text-gray-400">
                                         {{ $tingkat === 1 ? 'kelompok' : ($tingkat === count($digitList) ? 'akun detail' : 'header / detail') }}
                                         · {{ $jumlahAkun[$tingkat] ?? 0 }} akun
                                     </span>
@@ -219,14 +219,14 @@ new class extends Component {
                             <x-text-input id="awalKontra" type="number" min="0" wire:model.live.debounce.300ms="awalKontra" :disabled="!$kelola"
                                 :error="$errors->has('awalKontra')" class="w-full mt-1" />
                             <x-input-error :messages="$errors->get('awalKontra')" class="mt-1" />
-                            <p class="mt-1 text-[11px] text-muted dark:text-gray-400">
+                            <p class="mt-1 text-xs text-muted dark:text-gray-400">
                                 Saran kode otomatis tidak memakai nomor ini ke atas (dicadangkan untuk akumulasi penyusutan, cadangan piutang, dsb.). 0 = tidak ada cadangan.
                             </p>
                         </div>
                         <div class="p-3 border rounded-lg border-hairline bg-canvas dark:bg-gray-800 dark:border-gray-700">
                             <p class="text-xs text-muted dark:text-gray-400">Contoh kode akun detail</p>
                             <p class="mt-1 font-mono text-lg text-ink dark:text-gray-100" role="status" aria-live="polite">{{ $this->contohIsian() }}</p>
-                            <p class="mt-1 text-[11px] text-muted dark:text-gray-400">Tersimpan sekarang: <span class="font-mono">{{ FormatKodeAkun::contoh() }}</span></p>
+                            <p class="mt-1 text-xs text-muted dark:text-gray-400">Tersimpan sekarang: <span class="font-mono">{{ FormatKodeAkun::contoh() }}</span></p>
                         </div>
                     </div>
                 </x-border-form>

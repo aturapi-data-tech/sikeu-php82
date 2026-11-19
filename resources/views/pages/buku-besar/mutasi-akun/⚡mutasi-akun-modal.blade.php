@@ -108,7 +108,7 @@ new class extends Component {
 
     public function teksSaldo(float $saldo): string
     {
-        return $saldo == 0.0 ? '0,00' : Format::uang(abs($saldo)) . ($saldo > 0 ? ' D' : ' K');
+        return $saldo == 0.0 ? Format::uang(0) : Format::uang(abs($saldo)) . ($saldo > 0 ? ' D' : ' K');
     }
 
     public function keteranganBaris(array $baris): string
@@ -161,7 +161,7 @@ new class extends Component {
                         <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
                             @foreach (['Saldo awal' => $this->teksSaldo($mutasi['saldo_awal']), 'Debit' => Format::uang($mutasi['debit']), 'Kredit' => Format::uang($mutasi['kredit']), 'Saldo akhir' => $this->teksSaldo($mutasi['saldo_akhir'])] as $judul => $nilai)
                                 <div class="px-3 py-2 border rounded-lg bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
-                                    <p class="text-[11px] text-muted dark:text-gray-400">{{ $judul }}</p>
+                                    <p class="text-xs text-muted dark:text-gray-400">{{ $judul }}</p>
                                     <p class="text-sm font-semibold tabular-nums text-ink dark:text-gray-100 whitespace-nowrap">{{ $nilai }}</p>
                                 </div>
                             @endforeach
@@ -194,21 +194,18 @@ new class extends Component {
                                         class="{{ $rincianIndeks === $indeks ? 'bg-surface-strong dark:bg-gray-800' : '' }}">
                                         <td class="whitespace-nowrap">{{ Format::tanggal($baris['tanggal']) }}</td>
                                         <td class="ds-td-meta">{{ $baris['no_jurnal'] }}</td>
-                                        <td class="text-xs text-body dark:text-gray-300">{{ $this->keteranganBaris($baris) }}</td>
-                                        <td class="text-xs"><span class="font-mono">{{ $baris['akun_lawan_id'] }}</span> {{ $baris['nama_lawan'] }}</td>
+                                        <td class="text-body dark:text-gray-300">{{ $this->keteranganBaris($baris) }}</td>
+                                        <td><span class="font-mono">{{ $baris['akun_lawan_id'] }}</span> {{ $baris['nama_lawan'] }}</td>
                                         <td class="text-right tabular-nums">{{ (float) $baris['debit'] != 0 ? Format::uang($baris['debit']) : '' }}</td>
                                         <td class="text-right tabular-nums">{{ (float) $baris['kredit'] != 0 ? Format::uang($baris['kredit']) : '' }}</td>
                                         <td class="text-right tabular-nums whitespace-nowrap">{{ $this->teksSaldo($baris['saldo']) }}</td>
                                         <td class="ds-c">
                                             @if ($baris['sumber'] === 'SIRUS')
-                                                <button type="button" wire:click="toggleRincian({{ $indeks }})" wire:loading.attr="disabled" wire:target="toggleRincian({{ $indeks }})"
-                                                    aria-expanded="{{ $rincianIndeks === $indeks ? 'true' : 'false' }}"
-                                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border rounded-lg border-hairline text-body hover:bg-surface-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green dark:text-gray-300 dark:border-gray-700">
-                                                    <svg class="w-3 h-3 transition-transform motion-reduce:transition-none {{ $rincianIndeks === $indeks ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-                                                    SIRUS
-                                                </button>
+                                                <x-outline-button kecil wire:click="toggleRincian({{ $indeks }})" aria-expanded="{{ $rincianIndeks === $indeks ? 'true' : 'false' }}" title="Rincian transaksi SIRUS">
+                                                    <x-ikon nama="rinci" class="transition-transform motion-reduce:transition-none {{ $rincianIndeks === $indeks ? 'rotate-90' : '' }}" /> SIRUS
+                                                </x-outline-button>
                                             @else
-                                                <span class="text-[11px] text-muted">{{ $baris['sumber'] }}</span>
+                                                <span class="text-xs text-muted">{{ $baris['sumber'] }}</span>
                                             @endif
                                         </td>
                                     </tr>

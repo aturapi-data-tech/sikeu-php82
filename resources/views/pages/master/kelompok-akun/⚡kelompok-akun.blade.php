@@ -92,7 +92,7 @@ new class extends Component {
                                     <td class="ds-c">
                                         <x-badge :variant="$row->jenis_laporan === 'N' ? 'info' : 'purple'">{{ $row->jenis_laporan === 'N' ? 'Neraca' : 'Laba Rugi' }}</x-badge>
                                     </td>
-                                    <td class="ds-c font-mono text-xs">{{ $row->saldo_normal === 'D' ? 'Debit' : 'Kredit' }}</td>
+                                    <td class="ds-c">{{ $row->saldo_normal === 'D' ? 'Debit' : 'Kredit' }}</td>
                                     <td class="ds-c">{{ $row->urut }}</td>
                                     <td class="ds-c">
                                         <a href="{{ route('master.bagan-akun', ['kelompok' => $row->kelompok_id]) }}" wire:navigate

@@ -18,6 +18,16 @@ new class extends Component {
     #[Url(as: 'periode', except: '')]
     public string $periode = '';
 
+    /** Template laporan (Umum / Internal / ...); kosong = bawaan. Dikelola di Data Induk › Susunan Laporan. */
+    #[Url(as: 'template', except: '')]
+    public string $lapId = '';
+
+    #[Computed]
+    public function templateList(): array
+    {
+        return LaporanKeuangan::daftarTemplate(LaporanKeuangan::JENIS_LABARUGI);
+    }
+
     public function mount(): void
     {
         if (!SnapshotJurnal::periodeValid($this->periode)) {
@@ -36,7 +46,7 @@ new class extends Component {
     #[Computed]
     public function laporan(): array
     {
-        return LaporanKeuangan::labaRugi($this->periode);
+        return LaporanKeuangan::labaRugi($this->periode, $this->lapId !== '' ? (int) $this->lapId : null);
     }
 
     /** Periode Januari s/d periode terpilih yang belum diposting / belum dibuka — kolom kumulatif jadi tidak lengkap. */
@@ -57,6 +67,24 @@ new class extends Component {
     }
 
     /** Nilai bertanda → teks; negatif dalam kurung (gaya laporan keuangan). */
+    /** Kolom yang laba bersih laporannya ≠ Σ akun Laba Rugi: [kunci => selisih]. */
+    #[Computed]
+    public function labaTidakCocok(): array
+    {
+        $pemeriksaan = $this->laporan['pemeriksaan'];
+        $hasil = [];
+        foreach (array_keys($this->laporan['kolom']) as $kunci) {
+            if (isset($pemeriksaan['laba_bersih_laporan'][$kunci])) {
+                $selisih = round($pemeriksaan['laba_bersih_laporan'][$kunci] - $pemeriksaan['laba_bersih_akun'][$kunci], 2);
+                if ($selisih != 0.0) {
+                    $hasil[$kunci] = $selisih;
+                }
+            }
+        }
+
+        return $hasil;
+    }
+
     public function teksNilai(?float $nilai): string
     {
         if ($nilai === null) {
@@ -70,9 +98,12 @@ new class extends Component {
 
 <div>
 
-    <x-page-title
-        title="Laba Rugi"
-        subtitle="Laporan laba rugi dari jurnal terposting — susunan baris diatur di template laporan, bukan di program" />
+    {{-- Topbar: nama template yang dipakai (wire:key → judul ikut berganti saat template diganti) --}}
+    {{-- Topbar (sebelah logo): nama laporan · periode · template. wire:key ikut periode & template → judul berganti. --}}
+    <div wire:key="judul-{{ $periode }}-{{ $this->laporan['template']->lap_id ?? 0 }}">
+        <x-page-title title="Laporan Laba Rugi"
+            subtitle="Periode {{ LaporanKeuangan::namaPeriode($periode) }} · Template: {{ $this->laporan['template']->nama ?? '-' }}" />
+    </div>
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-surface-soft dark:bg-gray-900">
         <div class="px-6 pt-2 pb-6 space-y-4">
@@ -90,6 +121,17 @@ new class extends Component {
                             @endforelse
                         </x-select-input>
                     </div>
+                    @if (count($this->templateList) > 0)
+                        <div class="w-72">
+                            <x-input-label for="lapId" value="Template" />
+                            <x-select-input id="lapId" wire:model.live="lapId" class="mt-1">
+                                {{-- urutan: bawaan dulu → tanpa pilihan (lapId kosong) browser menampilkan bawaan --}}
+                                @foreach ($this->templateList as $idTemplate => $namaTemplate)
+                                    <option value="{{ $idTemplate }}">{{ $namaTemplate }}</option>
+                                @endforeach
+                            </x-select-input>
+                        </div>
+                    @endif
                     @php $statusPeriode = $this->periodeList[$periode]->status ?? null; @endphp
                     @if ($statusPeriode === 'K' || $statusPeriode === 'T')
                         <x-badge variant="success" class="mb-2">Final — periode dikunci</x-badge>
@@ -126,9 +168,12 @@ new class extends Component {
                 @endif
                 @foreach ($this->laporan['kolom'] as $kunciKolom => $kolom)
                     @if (isset($pemeriksaan['laba_bersih_laporan'][$kunciKolom]) && round($pemeriksaan['laba_bersih_laporan'][$kunciKolom] - $pemeriksaan['laba_bersih_akun'][$kunciKolom], 2) != 0.0)
-                        <div role="alert" class="px-4 py-2 text-sm rounded-lg bg-danger-soft text-fg-danger-strong">
-                            {{ $kolom['judul'] }}: laba bersih laporan {{ $this->teksNilai($pemeriksaan['laba_bersih_laporan'][$kunciKolom]) }}
-                            ≠ jumlah semua akun Laba Rugi {{ $this->teksNilai($pemeriksaan['laba_bersih_akun'][$kunciKolom]) }} — periksa rumus template.
+                        <div role="alert" class="flex gap-3 px-4 py-2 text-sm rounded-lg bg-danger-soft text-fg-danger-strong">
+                            <x-ikon-peringatan />
+                            <p>{{ $kolom['judul'] }}: laba bersih laporan {{ $this->teksNilai($pemeriksaan['laba_bersih_laporan'][$kunciKolom]) }}
+                                ≠ jumlah semua akun Laba Rugi {{ $this->teksNilai($pemeriksaan['laba_bersih_akun'][$kunciKolom]) }} (selisih {{ $this->teksNilai($this->labaTidakCocok[$kunciKolom] ?? 0) }}).
+                                <b>Penyebab: susunan template</b> — akun yatim / dobel atau rumus laba keliru. Betulkan di
+                                <a href="{{ route('master.susunan-laporan', ['template' => $this->laporan['template']->lap_id ?? '']) }}" wire:navigate class="font-semibold underline">Susunan Laporan</a>.</p>
                         </div>
                     @endif
                 @endforeach
@@ -136,17 +181,18 @@ new class extends Component {
 
             {{-- LAPORAN --}}
             <div class="overflow-x-auto bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900 print:border-0 print:shadow-none">
-                <div class="px-6 pt-5 pb-2 text-center">
+                {{-- Kop laporan hanya saat DICETAK (di layar judul ada di topbar) --}}
+                <div class="hidden px-6 pt-5 pb-2 text-center print:block">
                     <p class="text-sm font-semibold uppercase text-ink dark:text-gray-100">{{ \App\Support\Identitas::get()->nama ?: config('app.name') }}</p>
                     <p class="text-base font-bold text-ink dark:text-gray-100">LAPORAN LABA RUGI</p>
-                    <p class="text-sm text-muted dark:text-gray-400">Periode {{ SnapshotJurnal::labelPeriode($periode) }}</p>
+                    <p class="text-sm text-muted dark:text-gray-400">Periode {{ LaporanKeuangan::namaPeriode($periode) }}</p>
                 </div>
-                <table class="ds-table ds-table-entri">
+                <table class="ds-table ds-table-entri [&_td]:text-base">
                     <thead>
                         <tr>
                             <th>Keterangan</th>
                             @foreach ($this->laporan['kolom'] as $kolom)
-                                <th class="text-right w-48">{{ $kolom['judul'] }}</th>
+                                <th class="text-right w-56">{{ $kolom['judul'] }}@if (!empty($kolom['sub']))<span class="block mt-0.5 text-xs font-normal normal-case tracking-normal">{{ $kolom['sub'] }}</span>@endif</th>
                             @endforeach
                         </tr>
                     </thead>
@@ -158,12 +204,12 @@ new class extends Component {
                                     @if ($baris['tipe'] === 'A' && $baris['rincian'] !== [])
                                         <button type="button" x-on:click="buka = !buka" :aria-expanded="buka"
                                             class="inline-flex items-center gap-1 text-left hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green rounded">
-                                            <svg class="w-3 h-3 transition-transform print:hidden" :class="buka && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                            <x-ikon nama="rinci" ukuran="w-3 h-3" class="transition-transform print:hidden motion-reduce:transition-none" x-bind:class="buka && 'rotate-90'" />
                                             {{ $baris['label'] }}
                                         </button>
                                         <div x-show="buka" x-cloak class="mt-2 space-y-1">
                                             @foreach ($baris['rincian'] as $akunId => $rincian)
-                                                <div class="flex justify-between gap-4 text-xs">
+                                                <div class="flex justify-between gap-4 text-sm">
                                                     <button type="button" wire:click="$dispatch('buku-besar.buka-mutasi', { akunId: '{{ $akunId }}', dari: '{{ $periode }}', sampai: '{{ $periode }}' })"
                                                         class="text-left text-brand-green hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green rounded dark:text-brand-lime"><span class="font-mono">{{ $akunId }}</span> {{ $rincian['nama'] }}</button>
                                                 </div>
@@ -174,12 +220,17 @@ new class extends Component {
                                     @endif
                                 </td>
                                 @foreach ($this->laporan['kolom'] as $kunciKolom => $kolom)
-                                    <td class="text-right align-top tabular-nums whitespace-nowrap {{ $baris['tebal'] === '1' ? 'font-bold text-ink dark:text-gray-100' : '' }}">
-                                        {{ $this->teksNilai($baris['nilai'][$kunciKolom] ?? null) }}
+                                    @php
+                                        // baris laba bersih merah bila ≠ Σ akun Laba Rugi di kolom itu
+                                        $labaMerah = $baris['kode'] === ($pemeriksaan['kode_laba_bersih'] ?? null) && isset($this->labaTidakCocok[$kunciKolom]);
+                                        $kelasWarna = $labaMerah ? 'bg-danger-soft text-fg-danger-strong font-bold' : ($baris['tebal'] === '1' ? 'font-bold text-ink dark:text-gray-100' : '');
+                                    @endphp
+                                    <td class="text-right align-top tabular-nums whitespace-nowrap {{ $kelasWarna }}">
+                                        @if ($labaMerah)<x-ikon-peringatan label="Laba bersih laporan tidak sama dengan jumlah akun Laba Rugi" /> @endif{{ $this->teksNilai($baris['nilai'][$kunciKolom] ?? null) }}
                                         @if ($baris['tipe'] === 'A' && $baris['rincian'] !== [])
                                             <div x-show="buka" x-cloak class="mt-2 space-y-1 font-normal">
                                                 @foreach ($baris['rincian'] as $rincian)
-                                                    <div class="text-xs text-muted dark:text-gray-400">{{ $this->teksNilai($rincian[$kunciKolom] ?? 0) }}</div>
+                                                    <div class="text-sm text-muted dark:text-gray-400">{{ $this->teksNilai($rincian[$kunciKolom] ?? 0) }}</div>
                                                 @endforeach
                                             </div>
                                         @endif

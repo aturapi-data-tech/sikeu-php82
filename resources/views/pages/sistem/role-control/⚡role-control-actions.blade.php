@@ -268,7 +268,7 @@ new class extends Component {
                                     :error="$errors->has('form.name')" class="w-full mt-1"
                                     x-on:keydown.enter.prevent="$wire.save()" />
                                 <x-input-error :messages="$errors->get('form.name')" class="mt-1" />
-                                <p class="mt-1 text-[11px] text-muted dark:text-gray-400">
+                                <p class="mt-1 text-xs text-muted dark:text-gray-400">
                                     Nama unik per guard — gunakan huruf kapital di awal (Admin, Hrd, Karyawan).
                                     Menu memeriksa nama role tanpa membedakan huruf besar/kecil.
                                 </p>
@@ -282,7 +282,7 @@ new class extends Component {
                                     <option value="api">api</option>
                                 </x-select-input>
                                 <x-input-error :messages="$errors->get('form.guard_name')" class="mt-1" />
-                                <p class="mt-1 text-[11px] text-muted dark:text-gray-400">
+                                <p class="mt-1 text-xs text-muted dark:text-gray-400">
                                     Biasanya <code class="font-mono">web</code> untuk aplikasi ini.
                                 </p>
                             </div>
@@ -326,7 +326,7 @@ new class extends Component {
                                                     : 'border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60' }}">
                                             <div class="flex-1 min-w-0">
                                                 <div class="text-sm font-medium truncate text-ink dark:text-gray-200">{{ $perm->name }}</div>
-                                                <div class="text-[11px] text-muted dark:text-gray-400">{{ \App\Support\HakAkses::label($perm->name) ?: 'guard: ' . $perm->guard_name }}</div>
+                                                <div class="text-xs text-muted dark:text-gray-400">{{ \App\Support\HakAkses::label($perm->name) ?: 'guard: ' . $perm->guard_name }}</div>
                                             </div>
                                             <div aria-hidden="true"
                                                 class="relative h-6 transition rounded-full w-11 shrink-0 {{ $isActive ? 'bg-brand-green dark:bg-brand-lime' : 'bg-gray-300 dark:bg-gray-600' }}">

@@ -352,3 +352,7 @@
    di atas gray-900. Di .dark ikut token gelap di atas (≥4,5:1) — tanpa menulis dark: di tiap elemen. */
 .dark .text-muted { color: var(--muted); }
 .dark .text-muted-soft { color: var(--muted-soft); }
+
+/* Cetak laporan bentuk kanan-kiri (Neraca skontro) di kertas MENDATAR — halaman bernama, hanya elemen ini yang mendatar */
+@page mendatar { size: A4 landscape; }
+@media print { .cetak-mendatar { page: mendatar; } }

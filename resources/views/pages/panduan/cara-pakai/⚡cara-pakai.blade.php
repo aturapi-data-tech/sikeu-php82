@@ -122,7 +122,7 @@ new class extends Component {
                         <li>Buat jurnal penyesuaian di {!! $tautan('buku-besar.jurnal-umum', 'Jurnal Umum') !!}: jasa medis dokter terutang (rekap SIAP), pendapatan pasien rawat inap yang masih dirawat, listrik/air terutang, penyusutan, koreksi salah akun. Staf menyimpan <b>draft</b>, manajer <b>memposting</b>.</li>
                         <li>Periksa {!! $tautan('buku-besar.neraca-saldo', 'Neraca Saldo') !!}: badge <b>Seimbang</b>, dan klik badge <b>saldo berlawanan</b> untuk melihat akun yang janggal (piutang/persediaan bersaldo kredit). Klik akun untuk melihat mutasinya sampai transaksi SIRUS.</li>
                         <li>Rekonsiliasi: kas & bank dengan rekening koran, persediaan dengan kartu stok SIRUS, utang PBF per supplier.</li>
-                        <li>Baca {!! $tautan('laporan.laba-rugi', 'Laba Rugi') !!} dan {!! $tautan('laporan.neraca', 'Neraca') !!} (status <i>Sementara</i>) → review manajer keuangan.</li>
+                        <li>Baca {!! $tautan('laporan.laba-rugi', 'Laba Rugi') !!} dan {!! $tautan('laporan.neraca', 'Neraca') !!} (status <i>Sementara</i>) → review manajer keuangan. Pilih <b>Template</b> di atas laporan: <i>Umum (SAK EP)</i> untuk pihak luar, <i>Internal (Manajemen)</i> rinci per instalasi untuk rapat direksi — totalnya selalu sama. Susunan barisnya diatur di {!! $tautan('master.susunan-laporan', 'Data Induk › Susunan Laporan') !!}. Neraca bisa ditampilkan <b>Bertingkat</b> atau <b>Kanan-kiri</b> (dicetak mendatar). Baris jumlah yang <b>merah</b> = tidak seimbang / laba tidak cocok — kotak merah di atas laporan menyebut penyebabnya (jurnal bermasalah atau susunan template).</li>
                         <li><b>Kunci</b> bulan itu di Tarik Data SIRUS — laporan menjadi <i>Final</i>.</li>
                     </ol>
                 </section>
@@ -252,7 +252,7 @@ new class extends Component {
                             <tbody>
                                 @foreach ($this->hakAkses() as $izin => $hak)
                                     <tr wire:key="hak-{{ $izin }}">
-                                        <td class="text-sm"><span class="block text-ink dark:text-gray-100">{{ $hak['label'] }}</span><span class="font-mono text-[11px] text-muted">{{ $izin }}</span></td>
+                                        <td class="text-sm"><span class="block text-ink dark:text-gray-100">{{ $hak['label'] }}</span><span class="font-mono text-xs text-muted">{{ $izin }}</span></td>
                                         <td><div class="flex flex-wrap gap-1">@foreach ($hak['peran'] as $namaPeran)<x-badge variant="alternative">{{ $namaPeran }}</x-badge>@endforeach</div></td>
                                     </tr>
                                 @endforeach

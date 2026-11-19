@@ -117,8 +117,8 @@ new class extends Component {
         $this->formKeterangan = (string) $data['jurnal']->keterangan;
         $this->formBaris = array_map(fn (array $baris) => [
             'akun_id' => (string) $baris['akun_id'],
-            'debit' => (float) $baris['debit'] > 0 ? Format::uang($baris['debit']) : '',
-            'kredit' => (float) $baris['kredit'] > 0 ? Format::uang($baris['kredit']) : '',
+            'debit' => (float) $baris['debit'] > 0 ? (float) $baris['debit'] : '',
+            'kredit' => (float) $baris['kredit'] > 0 ? (float) $baris['kredit'] : '',
             'keterangan' => (string) ($baris['keterangan'] ?? ''),
         ], $data['baris']);
         $this->bukaForm();
@@ -160,8 +160,8 @@ new class extends Component {
         $debit = 0.0;
         $kredit = 0.0;
         foreach ($this->formBaris as $baris) {
-            $debit += Format::uraiUang((string) $baris['debit']) ?? 0;
-            $kredit += Format::uraiUang((string) $baris['kredit']) ?? 0;
+            $debit += Format::angka($baris['debit']) ?? 0;
+            $kredit += Format::angka($baris['kredit']) ?? 0;
         }
 
         return ['debit' => round($debit, 2), 'kredit' => round($kredit, 2), 'selisih' => round($debit - $kredit, 2)];
@@ -185,10 +185,10 @@ new class extends Component {
         }
         $barisList = [];
         foreach ($this->formBaris as $indeks => $baris) {
-            $debit = Format::uraiUang((string) $baris['debit']);
-            $kredit = Format::uraiUang((string) $baris['kredit']);
+            $debit = Format::angka($baris['debit']);
+            $kredit = Format::angka($baris['kredit']);
             if ($debit === null || $kredit === null) {
-                $this->addError("formBaris.{$indeks}.debit", 'Nominal harus angka, mis. 1.250.000 atau 1.250.000,50.');
+                $this->addError("formBaris.{$indeks}.debit", 'Nominal harus angka positif, mis. 1,250,000.50.');
                 return;
             }
             $barisList[] = ['akun_id' => $baris['akun_id'], 'debit' => $debit, 'kredit' => $kredit, 'keterangan' => $baris['keterangan']];
@@ -361,7 +361,7 @@ new class extends Component {
                                             @endif
                                             @if ($row->status === 'D')
                                                 @can('jurnal.posting')
-                                                    <x-confirm-button variant="primary" :action="'posting(' . $row->jurnal_id . ')'" class="px-2.5 py-1.5"
+                                                    <x-confirm-button variant="primary" :action="'posting(' . $row->jurnal_id . ')'" kecil
                                                         title="Posting {{ $row->no_jurnal }}" message="Jurnal masuk buku besar & laporan. Sesudah diposting tidak bisa diubah, hanya dibatalkan / dibalik."><x-ikon nama="setujui" /> Posting</x-confirm-button>
                                                 @endcan
                                                 @can('jurnal.entri')
@@ -370,7 +370,7 @@ new class extends Component {
                                             @endif
                                             @if ($row->status === 'P' && ($this->periodeList[$periode] ?? '') === 'B')
                                                 @can('jurnal.posting')
-                                                    <x-secondary-button type="button" class="px-2.5 py-1.5 text-sm" wire:click="bukaBatal({{ $row->jurnal_id }})"><x-ikon nama="batalkan" /> Batalkan</x-secondary-button>
+                                                    <x-secondary-button type="button" kecil wire:click="bukaBatal({{ $row->jurnal_id }})"><x-ikon nama="batalkan" /> Batalkan</x-secondary-button>
                                                 @endcan
                                             @endif
                                         </div>
@@ -461,13 +461,13 @@ new class extends Component {
                                             </x-select-input>
                                         </td>
                                         <td>
-                                            <x-text-input wire:model.blur="formBaris.{{ $indeks }}.debit" inputmode="decimal" :disabled="$bacaSaja"
-                                                :error="$errors->has('formBaris.' . $indeks . '.debit')" class="text-right tabular-nums" aria-label="Debit baris {{ $indeks + 1 }}" />
+                                            <x-text-input-number wire:model="formBaris.{{ $indeks }}.debit" :decimals="2" uang :disabled="$bacaSaja"
+                                                :error="$errors->has('formBaris.' . $indeks . '.debit')" aria-label="Debit baris {{ $indeks + 1 }}" />
                                             <x-input-error :messages="$errors->get('formBaris.' . $indeks . '.debit')" class="mt-1" />
                                         </td>
                                         <td>
-                                            <x-text-input wire:model.blur="formBaris.{{ $indeks }}.kredit" inputmode="decimal" :disabled="$bacaSaja"
-                                                class="text-right tabular-nums" aria-label="Kredit baris {{ $indeks + 1 }}" />
+                                            <x-text-input-number wire:model="formBaris.{{ $indeks }}.kredit" :decimals="2" uang :disabled="$bacaSaja"
+                                                aria-label="Kredit baris {{ $indeks + 1 }}" />
                                         </td>
                                         <td>
                                             <x-text-input wire:model="formBaris.{{ $indeks }}.keterangan" maxlength="500" :disabled="$bacaSaja" aria-label="Keterangan baris {{ $indeks + 1 }}" />
@@ -475,7 +475,7 @@ new class extends Component {
                                         @if (!$bacaSaja)
                                             <td>
                                                 <x-icon-button type="button" wire:click="hapusBaris({{ $indeks }})" aria-label="Hapus baris {{ $indeks + 1 }}">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    <x-ikon nama="kurangi" />
                                                 </x-icon-button>
                                             </td>
                                         @endif
@@ -486,7 +486,7 @@ new class extends Component {
                                 <tr class="font-bold bg-surface-card text-ink dark:bg-gray-800 dark:text-gray-100">
                                     <td colspan="2" class="px-3 py-3">
                                         @if (!$bacaSaja)
-                                            <x-secondary-button type="button" wire:click="tambahBaris" class="px-3 py-1.5 text-sm"><x-ikon nama="tambah" /> Tambah Baris</x-secondary-button>
+                                            <x-secondary-button type="button" wire:click="tambahBaris" kecil><x-ikon nama="tambah" /> Tambah Baris</x-secondary-button>
                                         @else
                                             Jumlah
                                         @endif
@@ -504,7 +504,7 @@ new class extends Component {
                             </tfoot>
                         </table>
                     </div>
-                    <p class="mt-2 text-[11px] text-muted dark:text-gray-400">Nominal ditulis gaya Indonesia: 1.250.000 atau 1.250.000,50. Jumlah dihitung ulang saat kursor meninggalkan kotak nominal.</p>
+                    <p class="mt-2 text-xs text-muted dark:text-gray-400">Nominal ditulis 1,250,000.50 (koma = ribuan, titik = desimal) — pemisah ribuan muncul otomatis saat mengetik; jumlah dihitung ulang saat kursor meninggalkan kotak nominal.</p>
                 </x-border-form>
             </div>
 

@@ -237,7 +237,7 @@ new class extends Component {
                                             <div class="min-w-0">
                                                 <div class="ds-td-strong">{{ $row->name ?? '-' }}</div>
                                                 <div class="text-sm break-all text-muted dark:text-gray-400">{{ $row->email }}</div>
-                                                <div class="mt-1 text-[11px] text-muted-soft">
+                                                <div class="mt-1 text-xs text-muted-soft">
                                                     Dibuat {{ $row->created_at ?? '-' }}
                                                     @if ($row->last_seen_at)
                                                         · Terakhir aktif {{ \App\Support\Format::waktu($row->last_seen_at) }}
@@ -271,18 +271,14 @@ new class extends Component {
                                                         <span class="text-xs italic text-muted-soft">Belum ada</span>
                                                     @endforelse
                                                 </div>
-                                                <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-brand-green dark:group-hover:text-brand-lime shrink-0 transition"
-                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
+                                                <x-ikon nama="ubah" ukuran="w-3.5 h-3.5" class="text-gray-300 group-hover:text-brand-green dark:group-hover:text-brand-lime shrink-0 transition" />
                                             </button>
 
                                             <div x-show="open" x-transition
                                                 class="absolute left-0 z-50 w-48 mt-1 border shadow-lg bg-canvas border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700"
                                                 style="display: none;">
                                                 <div class="px-3 py-2 border-b border-hairline-soft dark:border-gray-800">
-                                                    <p class="text-[10px] font-semibold uppercase tracking-wide text-muted-soft">Kelola Role</p>
+                                                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-soft">Kelola Role</p>
                                                 </div>
                                                 <ul class="py-1">
                                                     @forelse ($this->allRoles as $role)
@@ -294,7 +290,7 @@ new class extends Component {
                                                                 class="flex items-center w-full gap-2 px-3 py-1.5 text-sm transition hover:bg-surface-soft dark:hover:bg-gray-800
                                                                     {{ $active ? 'font-semibold ' . \App\Support\RoleBadge::activeText($role) : 'text-muted dark:text-gray-400' }}" wire:loading.attr="disabled" wire:target="toggleRole({{ $row->id }}, @js($role))">
                                                                 @if ($active)
-                                                                    <span class="{{ \App\Support\RoleBadge::badge($role) }} !px-1.5 !py-0 text-[10px]">✓</span>
+                                                                    <span class="{{ \App\Support\RoleBadge::badge($role) }} !px-1.5 !py-0 text-xs">✓</span>
                                                                 @else
                                                                     <span class="flex items-center justify-center w-5 h-5">
                                                                         <span class="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></span>

@@ -61,25 +61,53 @@ class Format
         return ($nilai instanceof DateTimeInterface ? Carbon::instance($nilai) : Carbon::parse($nilai))->format($pola);
     }
 
-    /** Nominal gaya Indonesia: 1.234.567,89. Nilai negatif tetap bertanda minus. */
+    /**
+     * Nominal: 1,234,567.89 (koma = ribuan, titik = desimal) — SAMA dengan isian <x-text-input-number>,
+     * supaya angka yang diketik dan yang ditampilkan tidak berbeda gaya (keputusan user 2026-11-19).
+     * Nilai negatif tetap bertanda minus.
+     */
     public static function uang(float|int|string|null $nilai, int $desimal = 2): string
     {
-        return number_format((float) $nilai, $desimal, ',', '.');
+        return number_format((float) $nilai, $desimal, '.', ',');
     }
 
-    /** Kebalikan uang(): "1.234.567,89" / "1234567.89" / "1234567" → float ≥ 0; teks kosong → 0; selain angka → null. */
+    /**
+     * Kebalikan uang(): terima "1,234,567.89" (gaya aplikasi), "1.234.567,89" (gaya lama/Indonesia), "1234567.89",
+     * "1234567" → float ≥ 0; teks kosong → 0; selain angka → null.
+     * Aturan: bila ada titik DAN koma, yang paling kanan = pemisah desimal. Bila hanya satu jenis: muncul lebih dari
+     * sekali atau diikuti tepat 3 angka di ujung = pemisah ribuan; selain itu = desimal.
+     */
     public static function uraiUang(?string $teks): ?float
     {
         $teks = str_replace([' ', 'Rp', 'rp'], '', trim((string) $teks));
         if ($teks === '') {
             return 0.0;
         }
-        if (str_contains($teks, ',')) {
-            $teks = str_replace(',', '.', str_replace('.', '', $teks));
-        } elseif (substr_count($teks, '.') > 1 || preg_match('/\.\d{3}$/', $teks)) {
-            $teks = str_replace('.', '', $teks);
+        $adaTitik = str_contains($teks, '.');
+        $adaKoma = str_contains($teks, ',');
+        if ($adaTitik && $adaKoma) {
+            $desimal = strrpos($teks, '.') > strrpos($teks, ',') ? '.' : ',';
+            $ribuan = $desimal === '.' ? ',' : '.';
+            $teks = str_replace([$ribuan, $desimal], ['', '.'], $teks);
+        } elseif ($adaTitik || $adaKoma) {
+            $tanda = $adaTitik ? '.' : ',';
+            $ribuan = substr_count($teks, $tanda) > 1 || preg_match('/' . preg_quote($tanda, '/') . '\d{3}$/', $teks);
+            $teks = $ribuan ? str_replace($tanda, '', $teks) : str_replace($tanda, '.', $teks);
         }
 
         return is_numeric($teks) && (float) $teks >= 0 ? round((float) $teks, 2) : null;
+    }
+
+    /** Nilai isian nominal: angka (dari <x-text-input-number>) dipakai langsung; teks diurai uraiUang(). */
+    public static function angka(mixed $nilai): ?float
+    {
+        if ($nilai === null || $nilai === '') {
+            return 0.0;
+        }
+        if (is_int($nilai) || is_float($nilai)) {
+            return $nilai >= 0 ? round((float) $nilai, 2) : null;
+        }
+
+        return self::uraiUang((string) $nilai);
     }
 }

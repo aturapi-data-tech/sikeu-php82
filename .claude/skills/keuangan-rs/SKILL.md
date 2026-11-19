@@ -186,7 +186,7 @@ gilirannya) · abu = aksi rutin / alternatif (Tarik, Tarik ulang, Ganti Versi) �
 
 | Prioritas | Butuh | Alasan |
 |---|---|---|
-| 1 | ~~Laporan Laba Rugi~~ SELESAI; sisa: **form Susunan Laporan** (ubah baris template tanpa SQL) | universal |
+| 1 | ~~Laporan Laba Rugi~~ SELESAI; ~~form Susunan Laporan~~ SELESAI (Data Induk › Susunan Laporan, `App\Support\SusunanLaporan`, DDL 09 bawaan/keterangan, DDL 10 contoh LR Internal per instalasi, DDL 11 contoh Neraca Internal rinci per akun (134 baris; total = Umum); banyak template per jenis, pilihan Template di layar laporan, template non-bawaan namanya tercetak di judul; jadikan bawaan ditolak bila galat/dobel; Neraca wajib kode TA & TLE) | universal |
 | 2 | ~~Saldo awal~~ SELESAI — **diisi di SIKEU**, hanya tahun pertama (`pembukuan.tahun_mulai`, kini 2026); tidak lagi dari API SIRUS `/saldo-awal` (§8) | syarat Neraca |
 | 3 | ~~Neraca~~ SELESAI; sisa **Laporan Perubahan Ekuitas** (PT; jenis baru di `sikeumst_lap_hdrs`) | set laporan SAK EP |
 | 4 | ~~Jurnal Umum / Penyesuaian~~ SELESAI (`App\Support\JurnalUmum`, layar Pembukuan › Jurnal Umum; draft `jurnal.entri`, posting/batal `jurnal.posting`; kunci periode ditolak bila ada draft) | tempat semua koreksi §5.6 |

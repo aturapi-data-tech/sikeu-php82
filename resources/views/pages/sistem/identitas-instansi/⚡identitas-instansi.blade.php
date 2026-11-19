@@ -183,7 +183,7 @@ new class extends Component {
                         <div>
                             <x-input-label value="Profil Singkat (Tentang kami di halaman depan)" />
                             <x-textarea wire:model.live.debounce.600ms="form.deskripsi" rows="4" maxlength="2000" :error="$errors->has('form.deskripsi')" class="w-full mt-1" />
-                            <div class="flex justify-between mt-1 text-[11px] text-muted"><span>Ganti baris dipertahankan.</span><span>{{ mb_strlen($form['deskripsi'] ?? '') }}/2000</span></div>
+                            <div class="flex justify-between mt-1 text-xs text-muted"><span>Ganti baris dipertahankan.</span><span>{{ mb_strlen($form['deskripsi'] ?? '') }}/2000</span></div>
                             <x-input-error :messages="$errors->get('form.deskripsi')" class="mt-1" />
                         </div>
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -267,9 +267,9 @@ new class extends Component {
                             @if ($logoPratinjau)
                                 <button type="button" wire:click="tandaiHapusLogo" class="block text-xs text-red-600 hover:underline">Hapus logo</button>
                             @endif
-                            <p class="text-[11px] text-muted">PNG/JPG/WEBP, maks 2 MB. Disarankan PNG latar transparan, resolusi tinggi (≥ 400 px) supaya tajam di cetakan.</p>
+                            <p class="text-xs text-muted">PNG/JPG/WEBP, maks 2 MB. Disarankan PNG latar transparan, resolusi tinggi (≥ 400 px) supaya tajam di cetakan.</p>
                             @if ($logoBaru || $hapusLogo)
-                                <p class="text-[11px] font-semibold text-amber-700">Belum tersimpan — klik Simpan.</p>
+                                <p class="text-xs font-semibold text-amber-700">Belum tersimpan — klik Simpan.</p>
                             @endif
                         </div>
                     </div>
@@ -287,18 +287,18 @@ new class extends Component {
                                 <img src="{{ $logoPratinjau }}" alt="Logo" class="inline-block object-contain h-16 mb-1">
                             @endif
                             <div class="text-sm font-bold text-gray-900">{{ $form['nama'] ?: 'Nama Instansi' }}</div>
-                            @if (filled($alamatPratinjau))<div class="text-[11px] text-gray-700">{{ $alamatPratinjau }}</div>@endif
+                            @if (filled($alamatPratinjau))<div class="text-xs text-gray-700">{{ $alamatPratinjau }}</div>@endif
                             @if (filled($form['telp']) || filled($form['fax']))
-                                <div class="text-[11px] text-gray-700">{{ filled($form['telp']) ? 'Telp. ' . $form['telp'] : '' }} {{ filled($form['fax']) ? 'Fax. ' . $form['fax'] : '' }}</div>
+                                <div class="text-xs text-gray-700">{{ filled($form['telp']) ? 'Telp. ' . $form['telp'] : '' }} {{ filled($form['fax']) ? 'Fax. ' . $form['fax'] : '' }}</div>
                             @endif
                             @if (filled($form['email']) || filled($form['website']))
-                                <div class="text-[11px] text-gray-700">{{ collect([$form['email'], $form['website']])->filter()->implode(' · ') }}</div>
+                                <div class="text-xs text-gray-700">{{ collect([$form['email'], $form['website']])->filter()->implode(' · ') }}</div>
                             @endif
                         </div>
                         <div class="mt-2 border-t-[2.5px] border-[#157547]"></div>
                         <div class="mt-0.5 border-t border-[#157547]"></div>
                     </div>
-                    <p class="mt-2 text-[11px] text-muted">Pratinjau perkiraan — hasil sebenarnya: <b>Contoh cetak PDF</b> (memakai data yang sudah disimpan).</p>
+                    <p class="mt-2 text-xs text-muted">Pratinjau perkiraan — hasil sebenarnya: <b>Contoh cetak PDF</b> (memakai data yang sudah disimpan).</p>
                 </x-border-form>
 
                 <div class="flex flex-wrap justify-end gap-2">

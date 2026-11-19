@@ -127,11 +127,11 @@ new class extends Component {
         return (string) ($baris['keterangan'] ?: BukuBesar::labelCabangBaca($baris['label_cabang'] ?? null) ?: ($baris['keterangan_jurnal'] ?? '') ?: $baris['sumber']);
     }
 
-    /** Saldo bertanda → teks "1.234,00 D" / "1.234,00 K". */
+    /** Saldo bertanda → teks "1,234.00 D" / "1,234.00 K". */
     public function teksSaldo(float $saldo): string
     {
         if ($saldo == 0.0) {
-            return '0,00';
+            return Format::uang(0);
         }
 
         return Format::uang(abs($saldo)) . ($saldo > 0 ? ' D' : ' K');
@@ -220,14 +220,14 @@ new class extends Component {
                                     <tr wire:key="mutasi-{{ $indeks }}-{{ $baris['jurnal_id'] }}-{{ $baris['cabang_kunci'] }}-{{ $baris['akun_lawan_id'] }}">
                                         <td class="whitespace-nowrap">{{ Format::tanggal($baris['tanggal']) }}</td>
                                         <td class="ds-td-meta">{{ $baris['no_jurnal'] }}</td>
-                                        <td class="text-xs text-body dark:text-gray-300">{{ $this->keteranganBaris($baris) }}</td>
-                                        <td class="text-xs"><span class="font-mono">{{ $baris['akun_lawan_id'] }}</span> {{ $baris['nama_lawan'] }}</td>
+                                        <td class="text-body dark:text-gray-300">{{ $this->keteranganBaris($baris) }}</td>
+                                        <td><span class="font-mono">{{ $baris['akun_lawan_id'] }}</span> {{ $baris['nama_lawan'] }}</td>
                                         <td class="text-right tabular-nums">{{ (float) $baris['debit'] != 0 ? Format::uang($baris['debit']) : '' }}</td>
                                         <td class="text-right tabular-nums">{{ (float) $baris['kredit'] != 0 ? Format::uang($baris['kredit']) : '' }}</td>
                                         <td class="text-right tabular-nums whitespace-nowrap">{{ $this->teksSaldo($baris['saldo']) }}</td>
                                         <td class="ds-c">
                                             @if ($baris['sumber'] === 'SIRUS')
-                                                <x-secondary-button type="button" class="px-2.5 py-1 text-xs" wire:click="bukaRincian({{ $indeks }})"
+                                                <x-secondary-button type="button" kecil wire:click="bukaRincian({{ $indeks }})"
                                                     wire:loading.attr="disabled" wire:target="bukaRincian({{ $indeks }})"
                                                     aria-label="Rincian transaksi SIRUS {{ $baris['no_jurnal'] }}"><x-ikon nama="lihat" ukuran="w-3.5 h-3.5" /> SIRUS</x-secondary-button>
                                             @endif
@@ -286,7 +286,7 @@ new class extends Component {
                         @foreach ($this->rincian as $indeksRincian => $transaksi)
                             <tr wire:key="rincian-{{ $indeksRincian }}">
                                 <td class="whitespace-nowrap">{{ Format::waktu($transaksi['txn_date']) }}</td>
-                                <td class="text-xs">{{ $transaksi['txn_name'] }}</td>
+                                <td>{{ $transaksi['txn_name'] }}</td>
                                 <td class="ds-td-meta">{{ $transaksi['txn_acc'] }}</td>
                                 <td class="ds-td-meta">{{ $transaksi['txn_acc_k'] }}</td>
                                 <td class="ds-c">{{ $transaksi['shift'] }}</td>

@@ -268,7 +268,7 @@ new class extends Component {
                                 <x-text-input wire:model="form.kelompok_id" :disabled="$formMode === 'edit'" maxlength="2"
                                     :error="$errors->has('form.kelompok_id')" class="w-full mt-1 font-mono" />
                                 <x-input-error :messages="$errors->get('form.kelompok_id')" class="mt-1" />
-                                <p class="mt-1 text-[11px] text-muted dark:text-gray-400">
+                                <p class="mt-1 text-xs text-muted dark:text-gray-400">
                                     {{ FormatKodeAkun::digitPerTingkat()[1] ?? 1 }} digit (tingkat 1 di Format Kode Akun) — jadi awalan semua kode akun di kelompok ini. Tidak bisa diubah setelah dibuat.
                                 </p>
                             </div>
@@ -277,7 +277,7 @@ new class extends Component {
                                 <x-text-input wire:model="form.nama" maxlength="50" :error="$errors->has('form.nama')" class="w-full mt-1"
                                     x-on:keydown.enter.prevent="$wire.save()" />
                                 <x-input-error :messages="$errors->get('form.nama')" class="mt-1" />
-                                <p class="mt-1 text-[11px] text-muted dark:text-gray-400">Disimpan huruf besar. Contoh: badan hukum yayasan (ISAK 35) mengganti EKUITAS menjadi ASET NETO.</p>
+                                <p class="mt-1 text-xs text-muted dark:text-gray-400">Disimpan huruf besar. Contoh: badan hukum yayasan (ISAK 35) mengganti EKUITAS menjadi ASET NETO.</p>
                             </div>
                             <div>
                                 <x-input-label value="Urutan di Laporan *" />
@@ -299,7 +299,7 @@ new class extends Component {
                                     <option value="L">Laba Rugi</option>
                                 </x-select-input>
                                 <x-input-error :messages="$errors->get('form.jenis_laporan')" class="mt-1" />
-                                <p class="mt-1 text-[11px] text-muted dark:text-gray-400">
+                                <p class="mt-1 text-xs text-muted dark:text-gray-400">
                                     Neraca: saldo akhir dibawa ke tahun berikutnya. Laba Rugi: mutasi per periode, dinolkan ke Saldo Laba saat tutup buku.
                                 </p>
                             </div>
@@ -310,7 +310,7 @@ new class extends Component {
                                     <option value="K">Kredit</option>
                                 </x-select-input>
                                 <x-input-error :messages="$errors->get('form.saldo_normal')" class="mt-1" />
-                                <p class="mt-1 text-[11px] text-muted dark:text-gray-400">Hanya bawaan untuk akun baru; saldo normal akun yang sudah ada tidak ikut berubah.</p>
+                                <p class="mt-1 text-xs text-muted dark:text-gray-400">Hanya bawaan untuk akun baru; saldo normal akun yang sudah ada tidak ikut berubah.</p>
                             </div>
                         </div>
                     </x-border-form>
