@@ -2,24 +2,18 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * Data awal SIKEU. Bagan akun, peta akun SIRUS, pengaturan, template laporan, role & hak akses sudah dipasang
+ * lewat migrasi (database/sql/01..11 + migrasi role/hak akses); seeder ini hanya membuat akun Admin pertama.
+ *
+ * Pemasangan server baru: php artisan migrate --seed --force
+ */
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $this->call(AdminAwalSeeder::class);
     }
 }

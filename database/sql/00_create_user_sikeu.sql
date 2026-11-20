@@ -7,10 +7,11 @@
 --
 -- Urutan pemasangan:
 --   1. 00_create_user_sikeu.sql   (file ini, sebagai SYSTEM)
---   2. php artisan migrate        (tabel kerangka Laravel: users, roles, cache, jobs, identitas)
---   3. 01_struktur_pembukuan.sql  (sebagai user SIKEU: tabel pembukuan)
---   4. 02_bagan_akun.sql          (sebagai user SIKEU: bagan akun standar SAK EP)
---   5. 03_peta_akun_sirus.sql     (sebagai user SIKEU: peta akun SIRUS -> SIKEU)
+--   2. .env: DB_* (user sikeu) + ADMIN_AWAL_EMAIL / ADMIN_AWAL_PASSWORD
+--   3. php artisan migrate --seed --force
+--      = tabel kerangka Laravel (users, roles, hak akses, identitas) + file 01..11 di folder ini berurutan
+--        (migrasi 2026_11_20_100000_pasang_struktur_pembukuan, file yang sudah terpasang dilewati) + akun Admin.
+--      File 01..11 tetap bisa dijalankan manual lewat SQL*Plus (sebagai user SIKEU) bila perlu.
 -- =============================================================================
 SET DEFINE OFF
 

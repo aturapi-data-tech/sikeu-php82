@@ -16,7 +16,8 @@ Oracle 10g (yajra/laravel-oci8), Tailwind + Alpine, Spatie Permission.
    Nama objek Oracle maks 30 karakter (`ORA_MAX_NAME_LEN=30`). **Sumber struktur tabel pembukuan =
    `database/sql/01_struktur_pembukuan.sql`** (bukan migrasi Laravel; migrasi hanya untuk tabel kerangka:
    users, roles, cache, jobs, identitas). Tabel/kolom baru = file DDL bernomor berikutnya (02_…), lengkap
-   dengan bagian periksa / verifikasi / rollback. Konsep buku besar ada di kepala file 01.
+   dengan bagian periksa / verifikasi / rollback, **plus migrasi kecil** yang menjalankannya lewat `App\Support\SkripSql::jalankan`
+   dengan penanda "sudah terpasang" (pola `2026_11_20_100000_pasang_struktur_pembukuan`) — server baru cukup `php artisan migrate --seed`. Konsep buku besar ada di kepala file 01.
    **Bagan akun & peta akun SIRUS** (02_, 03_) DIBANGKITKAN dari `database/sql/tools/bagan_akun.php` —
    jangan edit SQL-nya langsung. Generator menolak akun SIRUS yang belum dipetakan / peta ke akun header.
    Itu hanya untuk PASANG AWAL: sesudahnya sumber data = tabel, diubah lewat layar Data Induk › Bagan Akun &

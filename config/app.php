@@ -123,4 +123,14 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    | Akun Admin pertama, dibuat `php artisan db:seed` (Database\Seeders\AdminAwalSeeder).
+    | Isi di .env (JANGAN di kode — repo publik). Boleh dikosongkan lagi sesudah pemasangan.
+    */
+    'admin_awal' => [
+        'nama' => env('ADMIN_AWAL_NAMA', 'Administrator'),
+        'email' => env('ADMIN_AWAL_EMAIL'),
+        'password' => env('ADMIN_AWAL_PASSWORD'),
+    ],
+
 ];
