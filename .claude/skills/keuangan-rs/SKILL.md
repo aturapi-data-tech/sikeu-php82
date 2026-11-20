@@ -156,7 +156,22 @@ ada di **Panduan › Cara Pakai SIKEU** — ubah keduanya bersamaan.
    selisih tarif BPJS · jasa medis terutang (SIAP) · gaji/listrik/air terutang · penyusutan · amortisasi biaya dibayar dimuka
    · cadangan piutang · selisih opname persediaan. Kunci periode DITOLAK selama masih ada draft.
 7. Laporan bulan berjalan → review manajer keuangan → **Kunci periode**.
-8. Tutup tahun: penyesuaian akhir tahun, pajak, **jurnal PENUTUP** (akun L → saldo laba ditahan), saldo awal tahun baru.
+8. Tutup tahun: penyesuaian akhir tahun, pajak, kunci 01–12, lalu **Tutup Buku** di Pengaturan Pembukuan › Tahun buku
+   (`BukuBesar::tutupBuku`, hak `tutupBuku.jalankan`) → **jurnal PENUTUP** 31 Des (`PENUTUP-YYYY12-NN`, akun L dinolkan →
+   akun `akun.laba_ditahan`), tahun & 12 periode status **T**. Saldo awal tahun baru tetap diteruskan otomatis.
+
+### Tutup buku tahunan — ATURAN (dibangun 2026-11-20)
+
+- Syarat (`dampakTutupBuku`): tahun buku status B, 12 bulan berstatus K, tahun sebelumnya T (kecuali tahun pertama SIKEU),
+  akun laba ditahan = Detail Neraca aktif. Tahun tanpa saldo L ditutup tanpa jurnal (`jurnal_penutup_id` null).
+- **Penyajian: jurnal PENUTUP tahun X tidak ikut laporan tahun X**, baru terbaca mulai X+1 (sama seperti SALDO_AWAL):
+  `neracaSaldo` & `mutasiAkun` membuang PENUTUP dengan `periode >= awal tahun laporan`, `LaporanKeuangan::mutasiPerAkun`
+  membuang PENUTUP. Jadi laporan final tahun X tidak bergeser; di X+1 `laba_tahun_lalu` = 0 dan angkanya pindah ke akun
+  laba ditahan (Neraca per akun identik — teruji lokal 11-20 dalam transaksi rollback).
+- Saldo tersimpan (`sikeutxn_saldo_akuns`) bulan terkunci sesudah Desember X dihitung ulang saat tutup & batal.
+- Status T: buka kunci, posting, jurnal umum, Reset Tahun ditolak. **Batal Tutup Buku** (`batalTutupBuku`, alasan ≥ 10,
+  hanya tahun T terakhir): jurnal penutup → B, tahun → B, 12 periode → K. Tutup ulang = nomor jurnal berikutnya.
+- Tercatat juga di Panduan › Cara Pakai §4a — ubah keduanya bersamaan.
 
 ### Kunci & buka kunci — ATURAN URUTAN
 
@@ -197,7 +212,7 @@ gilirannya) · abu = aksi rutin / alternatif (Tarik, Tarik ulang, Ganti Versi) �
 | 9 | **Rekonsiliasi bank & kartu hutang/piutang** (subledger `sikeutxn_hp_*` vs akun kontrol) | kontrol internal |
 | 10 | **Laporan manajemen**: per instalasi, rasio, anggaran | dipakai direksi |
 | 11 | **CALK** (kebijakan akuntansi sebagai teks di pengaturan + tabel rincian otomatis) | set laporan |
-| 12 | Tutup buku tahunan (PENUTUP) + pajak tangguhan | akhir tahun |
+| 12 | ~~Tutup buku tahunan (PENUTUP)~~ SELESAI (§5 Tutup buku tahunan); sisa **pajak tangguhan** | akhir tahun |
 
 ---
 
@@ -270,6 +285,8 @@ gilirannya) · abu = aksi rutin / alternatif (Tarik, Tarik ulang, Ganti Versi) �
 - `''` = NULL di Oracle (pengaturan pemisah kode akun kosong tersimpan NULL).
 - Akun SIRUS "Pendapatan ... Terutang" (4.1AA/4.1BB/4.1CA/4.1GA/4.1AKA) adalah **piutang**, sudah dipetakan ke 1.1.02.x.
 - Saldo laba tahun lalu yang belum ditutup buku muncul sebagai baris tersendiri di Neraca Saldo — jangan dihilangkan;
-  hilang sendiri setelah jurnal PENUTUP dibangun.
+  hilang sendiri setelah tahun itu di-Tutup Buku (jurnal PENUTUP memindahkannya ke akun laba ditahan).
+- Query saldo/laporan baru WAJIB memperlakukan sumber PENUTUP seperti di `neracaSaldo` (buang bila periode >= awal tahun
+  laporan) — kalau tidak, laporan Desember tahun yang ditutup menampilkan akun Laba Rugi nol.
 - Jangan UPDATE/DELETE jurnal berstatus P. Koreksi = jurnal pembalik / status B.
 - Hasil query besar jangan disimpan di properti publik Livewire (pakai `#[Computed]`).

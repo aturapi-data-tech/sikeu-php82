@@ -43,6 +43,7 @@ new class extends Component {
         'bulanan' => '2. Tutup bulan (rutin)',
         'kunci' => '3. Kunci & buka kunci',
         'setelah-kunci' => '4. SIRUS berubah setelah dikunci?',
+        'tutup-buku' => '4a. Tutup buku tahunan',
         'set-ulang' => '4b. Memulai dari tahun lain',
         'kasus' => '4c. Kasus khusus (bertahap)',
         'warna' => '5. Arti warna tombol',
@@ -166,6 +167,23 @@ new class extends Component {
                             </ul>
                         </li>
                     </ol>
+                </section>
+
+                {{-- TUTUP BUKU --}}
+                <section id="tutup-buku" class="p-6 border scroll-mt-24 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                    <h2>4a. Tutup buku tahunan</h2>
+                    <p class="mt-2 text-sm">Mengunci bulan <b>tidak</b> memindahkan laba. Selama tahun belum ditutup, laba tahun lalu dihitung otomatis: di Neraca Saldo tampil baris <i>laba tahun lalu belum ditutup buku</i>, dan di Neraca angkanya ditambahkan ke akun laba ditahan. Tutup buku menjadikannya jurnal sungguhan.</p>
+                    <ol class="mt-3 text-sm">
+                        <li>Selesaikan penyesuaian akhir tahun (penyusutan, akrual, pajak, koreksi audit) di {!! $tautan('buku-besar.jurnal-umum', 'Jurnal Umum') !!}, lalu kunci 01 s/d 12.</li>
+                        <li>{!! $tautan('buku-besar.pengaturan', 'Pengaturan Pembukuan') !!} › Tahun buku → baris tahun itu (status <i>Terkunci penuh</i>) → <b>Tutup Buku</b> (hijau). Jendelanya menampilkan laba/rugi setahun dan akun laba ditahan tujuannya.</li>
+                        <li>SIKEU memposting <b>jurnal penutup 31 Desember</b> (nomor <span class="font-mono">PENUTUP-YYYY12-NN</span>): tiap akun Laba Rugi dinolkan, laba/rugi masuk ke akun laba ditahan (bagian 3 Pengaturan Pembukuan). Tahun itu berstatus <b>Tutup</b>.</li>
+                    </ol>
+                    <ul class="mt-3 text-sm">
+                        <li><b>Laporan tahun itu tidak berubah.</b> Laba Rugi, Neraca, Neraca Saldo, dan Buku Besar sampai Desember tetap menampilkan keadaan sebelum penutupan. Jurnal penutup baru terbaca mulai Januari tahun berikutnya, seperti saldo awal: baris <i>laba tahun lalu belum ditutup</i> hilang dan angkanya pindah ke akun laba ditahan. Total Neraca tidak berubah.</li>
+                        <li><b>Berurutan:</b> tahun pertama SIKEU ditutup dulu, baru tahun berikutnya. Bulan di tahun berikutnya boleh sudah dikunci; saldo tersimpannya dihitung ulang otomatis.</li>
+                        <li><b>Sesudah ditutup</b> bulan-bulan tahun itu tidak bisa dibuka kuncinya, diposting ulang, atau diberi jurnal umum. Koreksi sesudah tutup buku sebaiknya dibukukan di tahun berjalan.</li>
+                        <li><b>Batal Tutup Buku</b> (kuning, wajib alasan, hanya tahun yang terakhir ditutup): jurnal penutup berstatus batal (tetap tersimpan), 12 bulan kembali Kunci. Setelah koreksi, jalankan Tutup Buku lagi.</li>
+                    </ul>
                 </section>
 
                 {{-- SET ULANG --}}

@@ -23,6 +23,14 @@ use RuntimeException;
  *   saldo AWAL periodenya, bukan mutasi. Akun Neraca (kelompok N) kumulatif sejak awal; akun Laba Rugi
  *   (kelompok L) hanya sejak Januari tahun berjalan — laba/rugi tahun-tahun sebelumnya yang belum ditutup buku
  *   ditampilkan sebagai satu baris "Laba (rugi) tahun lalu belum ditutup buku" supaya neraca saldo tetap seimbang.
+ *
+ * TUTUP BUKU TAHUNAN (tutupBuku / batalTutupBuku)
+ *   Syarat: 12 bulan terkunci, tahun sebelumnya sudah tutup buku (kecuali tahun pertama), akun laba ditahan diatur.
+ *   Jurnal sumber PENUTUP di periode Desember (31 Des): tiap akun Laba Rugi dinolkan, selisihnya ke akun laba ditahan;
+ *   tahun buku & 12 periodenya berstatus T. Penyajian: jurnal penutup tahun X TIDAK ikut laporan tahun X (Laba Rugi,
+ *   Neraca, Neraca Saldo, Buku Besar s/d Desember X tetap = sebelum penutupan, jadi laporan final tidak bergeser) dan
+ *   baru terbaca mulai tahun X+1 — persis seperti saldo awal. Hasilnya: baris "laba tahun lalu belum ditutup" hilang,
+ *   angkanya pindah ke akun laba ditahan; total Neraca tidak berubah.
  */
 class BukuBesar
 {
@@ -31,6 +39,7 @@ class BukuBesar
     public const STATUS_TUTUP = 'T';
 
     public const SUMBER_SIRUS = 'SIRUS';
+    public const SUMBER_PENUTUP = 'PENUTUP';
 
     public const ALASAN_MIN = 10;
 
@@ -545,17 +554,8 @@ class BukuBesar
                     : 'Tahun ' . substr($giliran['periode'], 0, 4) . " belum dibuka — buka tahun bukunya, proses, lalu kunci mulai {$label}.");
             }
 
-            DB::table('sikeutxn_saldo_akuns')->where('periode', $periode)->delete();
+            $this->simpanSaldoAkun($periode);
             $sekarang = now();
-            foreach (array_chunk($this->neracaSaldo($periode)['akun'], 200) as $potongan) {
-                DB::table('sikeutxn_saldo_akuns')->insert(array_map(fn (array $row) => [
-                    'periode' => $periode, 'akun_id' => $row['akun_id'],
-                    'awal_debit' => max($row['awal'], 0), 'awal_kredit' => max(-$row['awal'], 0),
-                    'mutasi_debit' => $row['mutasi_debit'], 'mutasi_kredit' => $row['mutasi_kredit'],
-                    'akhir_debit' => max($row['akhir'], 0), 'akhir_kredit' => max(-$row['akhir'], 0),
-                    'dihitung_at' => $sekarang,
-                ], $potongan));
-            }
             DB::table('sikeumst_periodes')->where('periode', $periode)
                 ->update(['status' => self::STATUS_KUNCI, 'dikunci_oleh' => $userId, 'dikunci_at' => $sekarang, 'updated_at' => $sekarang]);
             BaganAkun::catatAudit('KUNCI', 'SIKEUMST_PERIODES', $periode, ['status' => self::STATUS_BUKA], ['status' => self::STATUS_KUNCI]);
@@ -571,6 +571,9 @@ class BukuBesar
         }
         DB::transaction(function () use ($periode, $alasan, $userId) {
             $periodeRow = DB::table('sikeumst_periodes')->where('periode', $periode)->lockForUpdate()->first();
+            if ($periodeRow && $periodeRow->status === self::STATUS_TUTUP) {
+                throw new RuntimeException('Tahun ' . substr($periode, 0, 4) . ' sudah tutup buku — batalkan tutup bukunya dulu di Pengaturan Pembukuan.');
+            }
             if (!$periodeRow || $periodeRow->status !== self::STATUS_KUNCI) {
                 throw new RuntimeException('Hanya periode berstatus Kunci yang bisa dibuka.');
             }
@@ -586,6 +589,238 @@ class BukuBesar
             ]);
             BaganAkun::catatAudit('BUKA_KUNCI', 'SIKEUMST_PERIODES', $periode, ['status' => self::STATUS_KUNCI], ['status' => self::STATUS_BUKA], $alasan);
         });
+    }
+
+    /** Simpan ulang saldo akun satu periode ke sikeutxn_saldo_akuns (saat kunci, dan saat tutup buku mengubah saldo awal). */
+    private function simpanSaldoAkun(string $periode): void
+    {
+        DB::table('sikeutxn_saldo_akuns')->where('periode', $periode)->delete();
+        $sekarang = now();
+        foreach (array_chunk($this->neracaSaldo($periode)['akun'], 200) as $potongan) {
+            DB::table('sikeutxn_saldo_akuns')->insert(array_map(fn (array $row) => [
+                'periode' => $periode, 'akun_id' => $row['akun_id'],
+                'awal_debit' => max($row['awal'], 0), 'awal_kredit' => max(-$row['awal'], 0),
+                'mutasi_debit' => $row['mutasi_debit'], 'mutasi_kredit' => $row['mutasi_kredit'],
+                'akhir_debit' => max($row['akhir'], 0), 'akhir_kredit' => max(-$row['akhir'], 0),
+                'dihitung_at' => $sekarang,
+            ], $potongan));
+        }
+    }
+
+    // ─── Tutup buku tahunan ──────────────────────────────────────────────────
+
+    /**
+     * Saldo akun Laba Rugi satu tahun (Jan–Des, jurnal P, tanpa jurnal penutup), bertanda + debit / − kredit.
+     * @return array<int, array{akun_id: string, nama: string, saldo: float}>
+     */
+    public function saldoLabaRugiTahun(int $tahun): array
+    {
+        $rows = DB::select(
+            "SELECT a.akun_id, a.nama, NVL(SUM(d.debit - d.kredit), 0) AS saldo
+               FROM sikeutxn_jurnal_dtls d
+               JOIN sikeutxn_jurnal_hdrs h ON h.jurnal_id = d.jurnal_id
+               JOIN sikeumst_akuns a ON a.akun_id = d.akun_id
+               JOIN sikeumst_akun_kelompoks k ON k.kelompok_id = a.kelompok_id
+              WHERE h.status = 'P' AND h.periode >= ? AND h.periode <= ? AND k.jenis_laporan = 'L'
+                AND h.sumber <> '" . self::SUMBER_PENUTUP . "'
+              GROUP BY a.akun_id, a.nama
+              ORDER BY a.akun_id",
+            [sprintf('%04d01', $tahun), sprintf('%04d12', $tahun)]
+        );
+        $hasil = [];
+        foreach ($rows as $row) {
+            $saldo = round((float) $row->saldo, 2);
+            if ($saldo != 0.0) {
+                $hasil[] = ['akun_id' => (string) $row->akun_id, 'nama' => (string) $row->nama, 'saldo' => $saldo];
+            }
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Pratinjau & syarat Tutup Buku: tahun buku Buka, 12 bulan terkunci, tahun sebelumnya sudah tutup buku
+     * (kecuali tahun pertama SIKEU), akun laba ditahan = Detail Neraca aktif. laba = + laba / − rugi.
+     * @return array{tahun: int, boleh: bool, galat: ?string, akun: array, laba: float, akun_ditahan: ?string, nama_ditahan: ?string, bulan_sesudah_terkunci: int}
+     */
+    public function dampakTutupBuku(int $tahun): array
+    {
+        $hasil = ['tahun' => $tahun, 'boleh' => false, 'galat' => null, 'akun' => [], 'laba' => 0.0,
+            'akun_ditahan' => null, 'nama_ditahan' => null, 'bulan_sesudah_terkunci' => 0];
+        $tahunBuku = DB::table('sikeumst_tahun_bukus')->where('tahun', $tahun)->first();
+        if (!$tahunBuku) {
+            $hasil['galat'] = "Tahun buku {$tahun} belum dibuka.";
+            return $hasil;
+        }
+        $hasil['akun'] = $this->saldoLabaRugiTahun($tahun);
+        $hasil['laba'] = round(-array_sum(array_column($hasil['akun'], 'saldo')), 2);
+        $akunDitahan = (string) (SaldoAwal::akunLaba()['ditahan'] ?? '');
+        $ditahan = $akunDitahan === '' ? null : DB::table('sikeumst_akuns as a')
+            ->join('sikeumst_akun_kelompoks as k', 'k.kelompok_id', '=', 'a.kelompok_id')
+            ->where('a.akun_id', $akunDitahan)->where('a.tipe', 'D')->where('a.aktif', '1')->where('k.jenis_laporan', 'N')
+            ->first(['a.akun_id', 'a.nama']);
+        $hasil['akun_ditahan'] = $ditahan ? (string) $ditahan->akun_id : null;
+        $hasil['nama_ditahan'] = $ditahan ? (string) $ditahan->nama : null;
+        $hasil['bulan_sesudah_terkunci'] = DB::table('sikeumst_periodes')->where('periode', '>', sprintf('%04d12', $tahun))
+            ->whereIn('status', [self::STATUS_KUNCI, self::STATUS_TUTUP])->count();
+
+        $belumKunci = DB::table('sikeumst_periodes')->where('tahun', $tahun)->where('status', '<>', self::STATUS_KUNCI)
+            ->orderBy('periode')->pluck('periode')->map(fn ($nilai) => (string) $nilai)->all();
+        $tahunMulai = SaldoAwal::tahunMulai();
+        if ($tahunBuku->status === self::STATUS_TUTUP) {
+            $hasil['galat'] = "Tahun {$tahun} sudah tutup buku.";
+        } elseif ($tahun < $tahunMulai) {
+            $hasil['galat'] = "Tahun {$tahun} sebelum tahun pertama SIKEU ({$tahunMulai}) — tidak dibukukan.";
+        } elseif ($tahun > $tahunMulai && DB::table('sikeumst_tahun_bukus')->where('tahun', $tahun - 1)->value('status') !== self::STATUS_TUTUP) {
+            $hasil['galat'] = 'Tahun ' . ($tahun - 1) . ' belum tutup buku — tutup berurutan dari tahun terlama.';
+        } elseif ($belumKunci !== [] || DB::table('sikeumst_periodes')->where('tahun', $tahun)->count() !== 12) {
+            $hasil['galat'] = 'Masih ada ' . count($belumKunci) . ' bulan yang belum terkunci'
+                . ($belumKunci !== [] ? ' (pertama ' . SnapshotJurnal::labelPeriode($belumKunci[0]) . ')' : '') . ' — kunci ke-12 bulan dulu di Tarik Data SIRUS.';
+        } elseif ($hasil['akun_ditahan'] === null) {
+            $hasil['galat'] = 'Akun laba ditahan belum diatur atau bukan akun Detail Neraca aktif — atur di bagian 3 halaman ini.';
+        } else {
+            $hasil['boleh'] = true;
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Tutup buku: jurnal PENUTUP 31 Desember (akun Laba Rugi dinolkan ke akun laba ditahan), tahun buku & 12 periodenya
+     * berstatus T, saldo tersimpan bulan-bulan terkunci sesudahnya dihitung ulang (saldo awalnya kini memuat laba ditahan).
+     * @return array dampakTutupBuku + no_jurnal, bulan_dihitung
+     */
+    public function tutupBuku(int $tahun, ?int $userId): array
+    {
+        return DB::transaction(function () use ($tahun, $userId) {
+            DB::table('sikeumst_tahun_bukus')->where('tahun', $tahun)->lockForUpdate()->first();
+            $dampak = $this->dampakTutupBuku($tahun);
+            if (!$dampak['boleh']) {
+                throw new RuntimeException($dampak['galat'] ?? 'Tahun ini belum bisa ditutup buku.');
+            }
+            $periode = sprintf('%04d12', $tahun);
+            $sekarang = now();
+            $akunDitahan = (string) $dampak['akun_ditahan'];
+            $jurnalId = null;
+            $noJurnal = null;
+
+            if ($dampak['akun'] !== []) {
+                $barisList = array_map(fn (array $akun) => [
+                    'akun_id' => $akun['akun_id'], 'akun_lawan_id' => $akunDitahan,
+                    'debit' => max(-$akun['saldo'], 0), 'kredit' => max($akun['saldo'], 0),
+                    'keterangan' => "Penutup tahun {$tahun}",
+                ], $dampak['akun']);
+                // Selisih ke laba ditahan: laba = kredit, rugi = debit
+                $barisList[] = ['akun_id' => $akunDitahan, 'akun_lawan_id' => null,
+                    'debit' => max(-$dampak['laba'], 0), 'kredit' => max($dampak['laba'], 0),
+                    'keterangan' => ($dampak['laba'] >= 0 ? 'Laba' : 'Rugi') . " tahun {$tahun} ke saldo laba"];
+                $barisList = array_values(array_filter($barisList, fn (array $baris) => $baris['debit'] != 0.0 || $baris['kredit'] != 0.0));
+
+                $urutNomor = 1 + DB::table('sikeutxn_jurnal_hdrs')->where('periode', $periode)->where('sumber', self::SUMBER_PENUTUP)->count();
+                $noJurnal = sprintf('%s-%s-%02d', self::SUMBER_PENUTUP, $periode, $urutNomor);
+                $jurnalId = (int) DB::table('sikeutxn_jurnal_hdrs')->insertGetId([
+                    'no_jurnal' => $noJurnal, 'periode' => $periode, 'tanggal' => sprintf('%04d-12-31', $tahun),
+                    'sumber' => self::SUMBER_PENUTUP, 'referensi_tabel' => 'SIKEUMST_TAHUN_BUKUS', 'referensi_id' => (string) $tahun,
+                    'keterangan' => "Jurnal penutup tahun {$tahun}: saldo akun Laba Rugi ke saldo laba (laba ditahan)",
+                    'status' => 'D', 'dibuat_oleh' => $userId, 'created_at' => $sekarang,
+                ], 'jurnal_id');
+                foreach (array_chunk($barisList, 200, true) as $potongan) {
+                    DB::table('sikeutxn_jurnal_dtls')->insert(array_map(fn (array $baris, int $indeks) => [
+                        'jurnal_id' => $jurnalId, 'urut' => $indeks + 1, 'akun_id' => $baris['akun_id'], 'akun_lawan_id' => $baris['akun_lawan_id'],
+                        'debit' => $baris['debit'], 'kredit' => $baris['kredit'], 'keterangan' => $baris['keterangan'],
+                    ], $potongan, array_keys($potongan)));
+                }
+                $total = DB::table('sikeutxn_jurnal_dtls')->where('jurnal_id', $jurnalId)
+                    ->selectRaw('NVL(SUM(debit), 0) AS debit, NVL(SUM(kredit), 0) AS kredit')->first();
+                if (round((float) $total->debit, 2) !== round((float) $total->kredit, 2)) {
+                    throw new RuntimeException("Jurnal penutup tidak seimbang (D {$total->debit} / K {$total->kredit}) — tutup buku dibatalkan.");
+                }
+                DB::table('sikeutxn_jurnal_hdrs')->where('jurnal_id', $jurnalId)->update([
+                    'total_debit' => $total->debit, 'total_kredit' => $total->kredit, 'status' => 'P',
+                    'diposting_oleh' => $userId, 'diposting_at' => $sekarang, 'updated_at' => $sekarang,
+                ]);
+            }
+
+            $akunBerjalan = (string) (SaldoAwal::akunLaba()['berjalan'] ?? '');
+            DB::table('sikeumst_tahun_bukus')->where('tahun', $tahun)->update([
+                'status' => self::STATUS_TUTUP, 'akun_laba_ditahan_id' => $akunDitahan,
+                'akun_laba_berjalan_id' => DB::table('sikeumst_akuns')->where('akun_id', $akunBerjalan)->exists() ? $akunBerjalan : null,
+                'jurnal_penutup_id' => $jurnalId, 'ditutup_oleh' => $userId, 'ditutup_at' => $sekarang, 'updated_at' => $sekarang,
+            ]);
+            DB::table('sikeumst_periodes')->where('tahun', $tahun)->update(['status' => self::STATUS_TUTUP, 'updated_at' => $sekarang]);
+            $bulanDihitung = $this->hitungUlangSaldoSesudah($tahun);
+            BaganAkun::catatAudit('TUTUP_BUKU', 'SIKEUMST_TAHUN_BUKUS', (string) $tahun, ['status' => self::STATUS_BUKA],
+                ['status' => self::STATUS_TUTUP, 'jurnal' => $noJurnal, 'laba' => $dampak['laba'], 'akun_ditahan' => $akunDitahan]);
+
+            return $dampak + ['no_jurnal' => $noJurnal, 'bulan_dihitung' => $bulanDihitung];
+        });
+    }
+
+    /**
+     * Syarat Batal Tutup Buku: tahun berstatus T dan tahun sesudahnya belum tutup buku (batal dari tahun terbaru).
+     * @return array{tahun: int, boleh: bool, galat: ?string, no_jurnal: ?string, laba: float, ditutup_at: mixed}
+     */
+    public function dampakBatalTutupBuku(int $tahun): array
+    {
+        $tahunBuku = DB::table('sikeumst_tahun_bukus')->where('tahun', $tahun)->first();
+        $jurnal = $tahunBuku && $tahunBuku->jurnal_penutup_id
+            ? DB::table('sikeutxn_jurnal_hdrs')->where('jurnal_id', $tahunBuku->jurnal_penutup_id)->first(['no_jurnal']) : null;
+        $hasil = ['tahun' => $tahun, 'boleh' => false, 'galat' => null, 'no_jurnal' => $jurnal->no_jurnal ?? null,
+            'laba' => round(-array_sum(array_column($this->saldoLabaRugiTahun($tahun), 'saldo')), 2), 'ditutup_at' => $tahunBuku->ditutup_at ?? null];
+        if (!$tahunBuku || $tahunBuku->status !== self::STATUS_TUTUP) {
+            $hasil['galat'] = "Tahun {$tahun} belum tutup buku.";
+        } elseif (DB::table('sikeumst_tahun_bukus')->where('tahun', '>', $tahun)->where('status', self::STATUS_TUTUP)->exists()) {
+            $hasil['galat'] = 'Tahun sesudahnya sudah tutup buku — batalkan berurutan dari tahun terbaru.';
+        } else {
+            $hasil['boleh'] = true;
+        }
+
+        return $hasil;
+    }
+
+    /** Batal Tutup Buku: jurnal penutup → status B (tetap tersimpan), tahun & 12 periodenya kembali Kunci. Alasan wajib. */
+    public function batalTutupBuku(int $tahun, string $alasan, ?int $userId): array
+    {
+        $alasan = trim($alasan);
+        if (mb_strlen($alasan) < self::ALASAN_MIN || !BaganAkun::teksAman($alasan)) {
+            throw new RuntimeException('Alasan wajib, minimal ' . self::ALASAN_MIN . ' karakter, tanpa simbol khusus.');
+        }
+
+        return DB::transaction(function () use ($tahun, $alasan, $userId) {
+            $tahunBuku = DB::table('sikeumst_tahun_bukus')->where('tahun', $tahun)->lockForUpdate()->first();
+            $dampak = $this->dampakBatalTutupBuku($tahun);
+            if (!$dampak['boleh']) {
+                throw new RuntimeException($dampak['galat'] ?? 'Tutup buku tidak bisa dibatalkan.');
+            }
+            $sekarang = now();
+            if ($tahunBuku->jurnal_penutup_id) {
+                DB::table('sikeutxn_jurnal_hdrs')->where('jurnal_id', $tahunBuku->jurnal_penutup_id)->where('status', 'P')->update([
+                    'status' => 'B', 'dibatalkan_oleh' => $userId, 'dibatalkan_at' => $sekarang,
+                    'alasan_batal' => mb_substr("Batal tutup buku {$tahun}: {$alasan}", 0, 500), 'updated_at' => $sekarang,
+                ]);
+            }
+            DB::table('sikeumst_tahun_bukus')->where('tahun', $tahun)->update([
+                'status' => self::STATUS_BUKA, 'jurnal_penutup_id' => null, 'ditutup_oleh' => null, 'ditutup_at' => null, 'updated_at' => $sekarang,
+            ]);
+            DB::table('sikeumst_periodes')->where('tahun', $tahun)->update(['status' => self::STATUS_KUNCI, 'updated_at' => $sekarang]);
+            $bulanDihitung = $this->hitungUlangSaldoSesudah($tahun);
+            BaganAkun::catatAudit('BATAL_TUTUP_BUKU', 'SIKEUMST_TAHUN_BUKUS', (string) $tahun, ['status' => self::STATUS_TUTUP, 'jurnal' => $dampak['no_jurnal']],
+                ['status' => self::STATUS_BUKA], $alasan);
+
+            return $dampak + ['bulan_dihitung' => $bulanDihitung];
+        });
+    }
+
+    /** Hitung ulang saldo tersimpan bulan-bulan terkunci sesudah Desember $tahun (saldo awalnya berubah karena tutup buku). */
+    private function hitungUlangSaldoSesudah(int $tahun): int
+    {
+        $periodeList = DB::table('sikeumst_periodes')->where('periode', '>', sprintf('%04d12', $tahun))
+            ->whereIn('status', [self::STATUS_KUNCI, self::STATUS_TUTUP])->orderBy('periode')->pluck('periode');
+        foreach ($periodeList as $periode) {
+            $this->simpanSaldoAkun((string) $periode);
+        }
+
+        return $periodeList->count();
     }
 
     // ─── Neraca saldo & mutasi ───────────────────────────────────────────────
@@ -608,9 +843,10 @@ class BukuBesar
                JOIN sikeumst_akun_kelompoks k ON k.kelompok_id = a.kelompok_id
               WHERE h.status = 'P' AND h.periode <= ?
                 AND (k.jenis_laporan = 'N' OR h.periode >= ?)
+                AND NOT (h.sumber = '" . self::SUMBER_PENUTUP . "' AND h.periode >= ?)
               GROUP BY a.akun_id, a.nama, a.kelompok_id, a.saldo_normal, k.jenis_laporan
               ORDER BY a.akun_id",
-            [$periode, $periode, $periode, $periode, $periode, $awalTahun]
+            [$periode, $periode, $periode, $periode, $periode, $awalTahun, $awalTahun]
         );
         $labaTahunLalu = (float) (DB::selectOne(
             "SELECT NVL(SUM(d.kredit - d.debit), 0) AS nilai
@@ -682,9 +918,10 @@ class BukuBesar
                LEFT JOIN sikeutxn_snap_cabangs c ON h.sumber = 'SIRUS' AND c.snap_id = TO_NUMBER(h.referensi_id) AND c.cabang_kunci = d.cabang_kunci
               WHERE h.status = 'P' AND d.akun_id = ? AND h.periode >= ? AND h.periode <= ?
                 AND NOT (h.sumber = 'SALDO_AWAL' AND h.periode = ?)
+                AND NOT (h.sumber = '" . self::SUMBER_PENUTUP . "' AND h.periode >= ?)
               GROUP BY h.jurnal_id, h.no_jurnal, h.tanggal, h.sumber, h.referensi_id, h.keterangan, d.akun_lawan_id, l.nama, d.cabang_kunci
               ORDER BY h.tanggal, h.jurnal_id, d.cabang_kunci, d.akun_lawan_id",
-            [$akunId, $periodeDari, $periodeSampai, $periodeDari]
+            [$akunId, $periodeDari, $periodeSampai, $periodeDari, substr($periodeSampai, 0, 4) . '01']
         );
 
         return ['saldo_awal' => round($saldoAwal, 2), 'baris' => array_map(fn ($row) => (array) $row, $rows)];

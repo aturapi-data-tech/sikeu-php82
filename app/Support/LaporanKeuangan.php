@@ -78,7 +78,7 @@ class LaporanKeuangan
     }
 
     /**
-     * Mutasi akun Detail dalam rentang periode (jurnal P).
+     * Mutasi akun Detail dalam rentang periode (jurnal P; jurnal penutup tidak ikut — laba rugi tahun itu tetap utuh).
      * @return array<string, array{debit: float, kredit: float}>
      */
     public static function mutasiPerAkun(string $periodeDari, string $periodeSampai): array
@@ -88,7 +88,7 @@ class LaporanKeuangan
             "SELECT d.akun_id, NVL(SUM(d.debit), 0) AS debit, NVL(SUM(d.kredit), 0) AS kredit
                FROM sikeutxn_jurnal_dtls d
                JOIN sikeutxn_jurnal_hdrs h ON h.jurnal_id = d.jurnal_id
-              WHERE h.status = 'P' AND h.periode >= ? AND h.periode <= ? AND h.sumber <> 'SALDO_AWAL'
+              WHERE h.status = 'P' AND h.periode >= ? AND h.periode <= ? AND h.sumber NOT IN ('SALDO_AWAL', '" . BukuBesar::SUMBER_PENUTUP . "')
               GROUP BY d.akun_id",
             [$periodeDari, $periodeSampai]
         );

@@ -5,6 +5,7 @@ use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
 use App\Support\BaganAkun;
 use App\Support\BukuBesar;
+use App\Support\Format;
 use App\Support\Pengaturan;
 use App\Support\SaldoAwal;
 use App\Support\SnapshotJurnal;
@@ -13,7 +14,8 @@ use App\Support\SnapshotJurnal;
  * PENGATURAN PEMBUKUAN — langkah pertama sebelum membukukan (menu Pembukuan paling atas):
  *   1. Tahun pertama SIKEU + Set Ulang (hak tutupBuku.jalankan, alasan wajib, pratinjau dampak — SaldoAwal::dampakSetUlang).
  *   2. Tahun buku sejak tahun pertama: status (belum dibuka / n dari 12 terkunci) + Buka Tahun Buku (hak periode.kunci);
- *      Reset Tahun (posting dibatalkan, jurnal umum jadi draft) / Hapus Tahun Buku bila belum dipakai (hak tutupBuku.jalankan).
+ *      Reset Tahun (posting dibatalkan, jurnal umum jadi draft) / Hapus Tahun Buku bila belum dipakai (hak tutupBuku.jalankan);
+ *      Tutup Buku (12 bulan terkunci → jurnal PENUTUP, BukuBesar::tutupBuku) / Batal Tutup Buku beralasan (hak tutupBuku.jalankan).
  *   3. Akun saldo laba: laba ditahan & laba tahun berjalan (hak akun.kelola).
  * Lanjutannya: Saldo Awal (tahun pertama) → Tarik Data SIRUS.
  */
@@ -21,6 +23,11 @@ new class extends Component {
     /** Jendela Reset Tahun */
     public ?int $tahunReset = null;
     public string $alasanReset = '';
+
+    /** Jendela Tutup Buku / Batal Tutup Buku */
+    public ?int $tahunTutup = null;
+    public bool $batalTutup = false;
+    public string $alasanBatalTutup = '';
 
     /** Jendela Set Ulang */
     public string $tahunBaru = '';
@@ -46,6 +53,7 @@ new class extends Component {
     #[Computed]
     public function tahunList(): array
     {
+        $statusTahun = DB::table('sikeumst_tahun_bukus')->pluck('status', 'tahun');
         $ringkasan = DB::table('sikeumst_periodes')
             ->selectRaw("SUBSTR(periode, 1, 4) AS tahun, COUNT(*) AS jumlah,
                 SUM(CASE WHEN status IN ('K', 'T') THEN 1 ELSE 0 END) AS terkunci,
@@ -60,7 +68,8 @@ new class extends Component {
         for ($tahun = $this->tahunMulai; $tahun <= $tahunAkhir; $tahun++) {
             $row = $ringkasan[(string) $tahun] ?? null;
             $rows[] = ['tahun' => $tahun, 'dibuka' => $row !== null, 'terkunci' => (int) ($row->terkunci ?? 0), 'diposting' => (int) ($row->diposting ?? 0),
-                'ada_jurnal' => (int) ($jurnalAktif[(string) $tahun] ?? 0) > 0];
+                'ada_jurnal' => (int) ($jurnalAktif[(string) $tahun] ?? 0) > 0,
+                'tutup_buku' => ($statusTahun[$tahun] ?? $statusTahun[(string) $tahun] ?? null) === BukuBesar::STATUS_TUTUP];
         }
 
         return $rows;
@@ -82,7 +91,7 @@ new class extends Component {
 
     private function segarkan(): void
     {
-        unset($this->tahunMulai, $this->tahunList, $this->giliranKunci, $this->dampakSetUlang, $this->dampakReset);
+        unset($this->tahunMulai, $this->tahunList, $this->giliranKunci, $this->dampakSetUlang, $this->dampakReset, $this->dampakTutup);
     }
 
     // ─── Tahun buku ───────────────────────────────────────────────────────────
@@ -148,6 +157,69 @@ new class extends Component {
         $this->resetValidation();
         unset($this->dampakReset);
         $this->dispatch('close-modal', name: 'reset-tahun');
+    }
+
+    // ─── Tutup buku tahunan ───────────────────────────────────────────────────
+    public function bukaTutupBuku(int $tahun, bool $batal = false): void
+    {
+        abort_unless(auth()->user()?->can('tutupBuku.jalankan'), 403);
+        $this->tahunTutup = $tahun;
+        $this->batalTutup = $batal;
+        $this->alasanBatalTutup = '';
+        $this->resetValidation();
+        unset($this->dampakTutup);
+        $this->dispatch('open-modal', name: 'tutup-buku');
+    }
+
+    /** Pratinjau jendela: syarat + jurnal penutup (tutup) atau syarat pembatalan (batal). */
+    #[Computed]
+    public function dampakTutup(): ?array
+    {
+        if (!$this->tahunTutup) {
+            return null;
+        }
+        $bukuBesar = new BukuBesar();
+
+        return $this->batalTutup ? $bukuBesar->dampakBatalTutupBuku($this->tahunTutup) : $bukuBesar->dampakTutupBuku($this->tahunTutup);
+    }
+
+    public function tutupBuku(): void
+    {
+        abort_unless(auth()->user()?->can('tutupBuku.jalankan'), 403);
+        try {
+            $hasil = (new BukuBesar())->tutupBuku((int) $this->tahunTutup, auth()->id());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+            unset($this->dampakTutup);
+            return;
+        }
+        $this->dispatch('toast', type: 'success', message: "Tahun {$hasil['tahun']} tutup buku: " . ($hasil['laba'] >= 0 ? 'laba' : 'rugi')
+            . ' Rp ' . Format::uang(abs($hasil['laba'])) . ' dipindah ke saldo laba' . ($hasil['no_jurnal'] ? " ({$hasil['no_jurnal']})" : '') . '.');
+        $this->tutupJendelaTutup();
+        $this->segarkan();
+    }
+
+    public function batalTutupBuku(): void
+    {
+        abort_unless(auth()->user()?->can('tutupBuku.jalankan'), 403);
+        $this->resetValidation();
+        try {
+            $hasil = (new BukuBesar())->batalTutupBuku((int) $this->tahunTutup, $this->alasanBatalTutup, auth()->id());
+        } catch (\Throwable $exception) {
+            $this->addError('alasanBatalTutup', $exception->getMessage());
+            return;
+        }
+        $this->dispatch('toast', type: 'success', message: "Tutup buku {$hasil['tahun']} dibatalkan: jurnal penutup berstatus batal, 12 bulan kembali Kunci.");
+        $this->tutupJendelaTutup();
+        $this->segarkan();
+    }
+
+    public function tutupJendelaTutup(): void
+    {
+        $this->reset(['tahunTutup', 'batalTutup', 'alasanBatalTutup']);
+        $this->resetValidation();
+        unset($this->dampakTutup);
+        $this->dispatch('close-modal', name: 'tutup-buku');
     }
 
     // ─── Set ulang tahun pertama ──────────────────────────────────────────────
@@ -243,7 +315,8 @@ new class extends Component {
 
             {{-- 2. TAHUN BUKU --}}
             <x-border-form title="2. Tahun buku">
-                <p class="mb-3 text-sm text-body dark:text-gray-300">Dikunci berurutan per tahun: {{ $this->tahunMulai }} terkunci penuh dulu, baru tahun berikutnya.</p>
+                <p class="mb-3 text-sm text-body dark:text-gray-300">Dikunci berurutan per tahun: {{ $this->tahunMulai }} terkunci penuh dulu, baru tahun berikutnya.
+                    Setelah 12 bulan terkunci, <b>Tutup Buku</b> memindahkan laba/rugi tahun itu ke akun laba ditahan (jurnal penutup 31 Desember).</p>
                 <div class="overflow-x-auto border rounded-xl border-hairline dark:border-gray-700">
                     <table class="ds-table ds-table-entri">
                         <thead><tr><th>Tahun</th><th class="ds-c">Status</th><th class="ds-c">Diposting</th><th class="ds-c">Terkunci</th><th class="ds-c">Aksi</th></tr></thead>
@@ -256,8 +329,10 @@ new class extends Component {
                                     <td class="ds-c">
                                         @if (!$row['dibuka'])
                                             <x-badge variant="gray">Belum dibuka</x-badge>
+                                        @elseif ($row['tutup_buku'])
+                                            <x-badge variant="success">Tutup buku</x-badge>
                                         @elseif ($row['terkunci'] === 12)
-                                            <x-badge variant="success">Terkunci penuh</x-badge>
+                                            <x-badge variant="info">Terkunci penuh</x-badge>
                                         @else
                                             <x-badge variant="warning">Berjalan</x-badge>
                                         @endif
@@ -279,7 +354,11 @@ new class extends Component {
                                                 @endif
                                                 <x-outline-button type="button" kecil x-on:click="Livewire.navigate('{{ route('buku-besar.periode', ['tahun' => $row['tahun']]) }}')"><x-ikon nama="lihat" /> Tarik Data SIRUS</x-outline-button>
                                                 @can('tutupBuku.jalankan')
-                                                    @if ($row['ada_jurnal'] || $row['diposting'] > 0)
+                                                    @if ($row['tutup_buku'])
+                                                        <x-warning-button type="button" kecil wire:click="bukaTutupBuku({{ $row['tahun'] }}, true)"><x-ikon nama="buka-kunci" /> Batal Tutup Buku</x-warning-button>
+                                                    @elseif ($row['terkunci'] === 12)
+                                                        <x-primary-button type="button" kecil wire:click="bukaTutupBuku({{ $row['tahun'] }})"><x-ikon nama="kunci" /> Tutup Buku</x-primary-button>
+                                                    @elseif ($row['ada_jurnal'] || $row['diposting'] > 0)
                                                         <x-warning-button type="button" kecil wire:click="bukaReset({{ $row['tahun'] }})"><x-ikon nama="muat-ulang" /> Reset Tahun</x-warning-button>
                                                     @elseif ($row['terkunci'] === 0)
                                                         <x-confirm-button variant="danger-soft" action="hapusTahun({{ $row['tahun'] }})" title="Hapus Tahun Buku {{ $row['tahun'] }}"
@@ -357,6 +436,68 @@ new class extends Component {
                     <x-danger-button type="button" wire:click="resetTahun" wire:loading.attr="disabled" wire:target="resetTahun" :disabled="!$dampakReset || !$dampakReset['boleh']">
                         <x-ikon nama="muat-ulang" /> Reset Tahun {{ $tahunReset }}
                     </x-danger-button>
+                </div>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- JENDELA TUTUP BUKU / BATAL TUTUP BUKU --}}
+    <x-modal name="tutup-buku" size="2xl">
+        <div class="flex flex-col">
+            <x-modul-dokumen.header judul="{{ $batalTutup ? 'Batal Tutup Buku' : 'Tutup Buku' }} {{ $tahunTutup }}"
+                ikon="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" tutupAlpine="$wire.tutupJendelaTutup()">
+                {{ $batalTutup ? 'Jurnal penutup dibatalkan (tetap tersimpan), 12 bulan kembali berstatus Kunci.' : 'Saldo akun Laba Rugi dinolkan ke akun laba ditahan lewat jurnal penutup 31 Desember.' }}
+            </x-modul-dokumen.header>
+            <div class="p-5 space-y-4 text-sm bg-canvas text-body dark:bg-gray-900 dark:text-gray-300">
+                @php $dampakTutup = $this->dampakTutup; @endphp
+                @if ($dampakTutup)
+                    @if ($dampakTutup['galat'])
+                        <div role="alert" class="flex gap-2 px-3 py-2 rounded-lg bg-danger-soft text-fg-danger-strong"><x-ikon-peringatan /><p>{{ $dampakTutup['galat'] }}</p></div>
+                    @endif
+
+                    @if (!$batalTutup)
+                        <div class="flex flex-wrap items-baseline justify-between gap-2 p-3 border rounded-xl border-hairline dark:border-gray-700">
+                            <span>{{ $dampakTutup['laba'] >= 0 ? 'Laba' : 'Rugi' }} tahun {{ $tahunTutup }} ({{ count($dampakTutup['akun']) }} akun Laba Rugi)</span>
+                            <span class="text-lg font-semibold tabular-nums {{ $dampakTutup['laba'] >= 0 ? 'text-ink dark:text-gray-100' : 'text-fg-danger-strong' }}">Rp {{ Format::uang(abs($dampakTutup['laba'])) }}</span>
+                        </div>
+                        @if ($dampakTutup['boleh'])
+                            <ul class="pl-5 space-y-1 list-disc">
+                                <li>Jurnal penutup 31 Desember {{ $tahunTutup }}: tiap akun Laba Rugi dinolkan, {{ $dampakTutup['laba'] >= 0 ? 'laba' : 'rugi' }} masuk ke
+                                    <b>{{ $dampakTutup['akun_ditahan'] }} {{ $dampakTutup['nama_ditahan'] }}</b>.</li>
+                                <li>Laporan {{ $tahunTutup }} (Laba Rugi, Neraca, Neraca Saldo s/d Desember) <b>tidak berubah</b>; mulai Januari {{ $tahunTutup + 1 }}
+                                    baris "laba tahun lalu belum ditutup" hilang dan angkanya tampil di akun laba ditahan.</li>
+                                <li>Tahun {{ $tahunTutup }} berstatus <b>Tutup</b>: tidak bisa buka kunci, posting, atau jurnal umum sampai tutup bukunya dibatalkan.</li>
+                                @if ($dampakTutup['bulan_sesudah_terkunci'] > 0)
+                                    <li>Saldo tersimpan {{ $dampakTutup['bulan_sesudah_terkunci'] }} bulan terkunci sesudahnya dihitung ulang (totalnya tetap).</li>
+                                @endif
+                            </ul>
+                        @endif
+                    @else
+                        @if ($dampakTutup['boleh'])
+                            <ul class="pl-5 space-y-1 list-disc">
+                                <li>Jurnal penutup <b>{{ $dampakTutup['no_jurnal'] ?? '-' }}</b> berstatus batal (tetap tersimpan sebagai jejak).</li>
+                                <li>12 bulan {{ $tahunTutup }} kembali berstatus <b>Kunci</b>; laba/rugi Rp {{ Format::uang(abs($dampakTutup['laba'])) }} kembali tampil sebagai "laba tahun lalu belum ditutup".</li>
+                                <li>Sesudah diperbaiki (buka kunci, koreksi, kunci lagi), jalankan Tutup Buku lagi.</li>
+                            </ul>
+                        @endif
+                        <div>
+                            <x-input-label for="alasanBatalTutup" value="Alasan *" />
+                            <x-text-input id="alasanBatalTutup" wire:model="alasanBatalTutup" maxlength="300" placeholder="mis. koreksi audit KAP atas persediaan Desember" :error="$errors->has('alasanBatalTutup')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('alasanBatalTutup')" class="mt-1" />
+                        </div>
+                    @endif
+                @endif
+                <div class="flex justify-end gap-2">
+                    <x-secondary-button type="button" wire:click="tutupJendelaTutup"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                    @if ($batalTutup)
+                        <x-warning-button type="button" wire:click="batalTutupBuku" wire:loading.attr="disabled" wire:target="batalTutupBuku" :disabled="!$dampakTutup || !$dampakTutup['boleh']">
+                            <x-ikon nama="buka-kunci" /> Batal Tutup Buku {{ $tahunTutup }}
+                        </x-warning-button>
+                    @else
+                        <x-primary-button type="button" wire:click="tutupBuku" wire:loading.attr="disabled" wire:target="tutupBuku" :disabled="!$dampakTutup || !$dampakTutup['boleh']">
+                            <x-ikon nama="kunci" /> Tutup Buku {{ $tahunTutup }}
+                        </x-primary-button>
+                    @endif
                 </div>
             </div>
         </div>
